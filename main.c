@@ -5,7 +5,7 @@
 #include "dbuf.h"
 #include "main.h"
 #include "parse.h"
-#include "table.h"
+#include "usertable.h"
 
 MyData me;
 
@@ -22,7 +22,7 @@ void fatal(char *fmt, ...)
     vfprintf(stderr, fmt, ap);
     va_end(ap);
 
-    fprintf(stderr, ": %s\n", strerror(save_errno));
+    fprintf(stderr, ": %s\n", save_errno ? strerror(save_errno) : "Terminated.");
     exit(EXIT_FAILURE);
 }
 
@@ -44,7 +44,7 @@ int connect_server(char *host, unsigned int port)
     sock.sin_port = port;
     sock.sin_family = AF_INET;
 
-    printf("connecting to %s ...\n", inet_ntop(AF_INET,
+    printf("connecting to %s ...", inet_ntop(AF_INET,
 		(const void *) &sock.sin_addr, hostbuf, HOSTLEN-1));
 
     if((ret = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -68,12 +68,13 @@ int connect_server(char *host, unsigned int port)
     else if(fcntl(ret, F_SETFL, nb | O_NONBLOCK) < 0)
 	fatal("fcntl(%d, F_SETFL, nb | O_NONBLOCK)");
 
+    printf(" connected.\n");
     return ret;
 }
 
 void dopacket(char *buffer, size_t len)
 {
-    static char buf[BUFSIZE];
+    static char buf[BUFSIZE << 1];
     static short count = 0;
     char *mybuf, *inbuf;
 
@@ -118,23 +119,24 @@ static __inline void io_error(char *func, int e)
 int send_out(char *fmt, ...)
 {
     va_list ap;
-    static char buffer[BUFSIZE];
+    static char buffer[BUFSIZE + 1];
     size_t len;
     
     va_start(ap, fmt);
     len = vsnprintf(buffer, BUFSIZE, fmt, ap);
     va_end(ap);
-    if(len > 510)
+
+    if(len > BUFSIZE - 2)
     {
-	buffer[509] = '\r';
-	buffer[510] = '\n';
-	buffer[511] = '\0';
+	buffer[BUFSIZE - 1] = '\n';
+	buffer[BUFSIZE] = '\0';
+	len = BUFSIZE;
     }
     else
     {
-	buffer[len++] = '\r';
-	buffer[len++] = '\n';
-	buffer[len] = '\0';
+	buffer[len] = '\n';
+	buffer[len+1] = '\0';
+	len++;
     }
     dbuf_put(&me.sendQ, buffer, len);
     return len;
@@ -144,7 +146,9 @@ static void io_loop()
 {
     fd_set read_set, write_set;
     struct timeval wait;
-    static char readbuf[IOBUFSIZE];
+    char readbuf[IOBUFSIZE + 1];
+    char writebuf[IOBUFSIZE + 1];
+    int count = 0;
     
     dbuf_init();
     send_out("PASS %s :TS", me.pass);
@@ -169,41 +173,36 @@ static void io_loop()
 	{
 	    if(FD_ISSET(me.sock, &read_set))
 	    {
-		int rd;
-		memset(me.buffer, 0x0, BUFSIZE);
-		while((rd = read(me.sock, me.buffer, BUFSIZE)) > 0)
+		while((count = read(me.sock, readbuf, IOBUFSIZE)) > 0)
 		{
-		    if(dbuf_put(&me.recvQ, me.buffer, rd) < 0)
+		    readbuf[count] = '\0';
+		    if(dbuf_put(&me.recvQ, readbuf, count) == 0)
 			fatal("dbuf_put()");
 		}
-		if(rd < 0)
+		if(count < 0)
 		{
 		    io_error("read()", errno);
 		}
 	    }
 	    if(FD_ISSET(me.sock, &write_set))
 	    {
-		char writebuf[IOBUFSIZE];
-		size_t count;
-		do
+		while(DBufLength(&me.sendQ))
 		{
-		    count = dbuf_get(&me.sendQ, writebuf, sizeof(writebuf));
+		    if((count = dbuf_get(&me.sendQ, writebuf, IOBUFSIZE)) == 0)
+			break;
+		    writebuf[count] = '\0';
 		    if(write(me.sock, writebuf, count) < 0)
 		    {
 			io_error("write()", errno);
 		    }
-		} while(DBufLength(&me.sendQ));
+		} 
 	    }
-	    if(DBufLength(&me.recvQ))
+
+	    while(DBufLength(&me.recvQ))
 	    {
-		size_t c;
-		do
-		{
-		    c = dbuf_get(&me.recvQ, readbuf, sizeof(readbuf));
-		    if(c <= 0)
-			break;
-		    dopacket(readbuf, c);
-		} while(DBufLength(&me.recvQ));
+		if((count = dbuf_get(&me.recvQ, readbuf, IOBUFSIZE)) == 0)
+		    break;
+		dopacket(readbuf, count);
 	    }
 	}
 	else

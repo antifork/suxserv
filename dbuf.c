@@ -28,7 +28,7 @@
 #include "dbuf.h"
 #include "memory.h"
 
-#define INITIAL_DBUFS	1024	/* preallocate 2mb of dbufs */
+#define INITIAL_DBUFS	1024	/* preallocate 2048KBytes. */
 #if !defined( MIN ) || !defined( MAX )
 # undef MIN
 # undef MAX

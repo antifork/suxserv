@@ -16,9 +16,12 @@ extern User *find_client(char *);
 struct Message { char *cmd; int (*func)(int, char **); unsigned int count; };
 %%
 436, m_nickcoll, 0
+ADMIN, m_admin, 0
 AWAY, m_away, 0
 BURST, m_burst, 0
 CAPAB, m_capab, 0
+ERROR, m_error, 0
+GNOTICE, m_gnotice, 0
 INFO, m_info, 0
 JOIN, m_join, 0
 KICK, m_kick, 0
@@ -38,6 +41,7 @@ SQUIT, m_squit, 0
 STATS, m_stats, 0
 SVINFO, m_svinfo, 0
 SERVER, m_server, 0
+TIME, m_time, 0
 TOPIC, m_topic, 0
 VERSION, m_version, 0
 NS, m_ns, 0
@@ -58,7 +62,7 @@ int parse(char *buffer, char *bufend)
     int i;
     struct Message *mptr;
 
-    fprintf(stderr, "parse(): %s\n", buffer);
+    //fprintf(stderr, "<: %s\n", buffer);
     s = sender;
     *s = '\0';
     

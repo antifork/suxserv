@@ -1,7 +1,8 @@
 #include "services.h"
 #include "h.h"
 #include "main.h"
-#include "table.h"
+#include "usertable.h"
+#include "numeric.h"
 
 #define DUMMY return 0;
 
@@ -60,8 +61,7 @@ int m_kick(int parc, char **parv)
  */
 int m_nick(int parc, char **parv)
 {
-    User *debug;
-    if(parc > 2)
+    if(parc > 3)
     {
 	User *u;
 	/* new user. */
@@ -75,37 +75,38 @@ int m_nick(int parc, char **parv)
 	/* XXX: nickip handling */
 	strcpy(u->gcos, parv[10]);
 
-	debug = usertable.getp(&usertable, parv[1]);
-	fprintf(stderr, "allocated new nick: %s!%s@%s on %s\n", 
-		debug->nick, debug->username, debug->host, debug->server);
 	return 1;
     }
     else
     {
 	User u;
 	
-	char oldnick[NICKLEN];
-	
 	/* nick change */
-	usertable.get(&usertable, parv[0], &u); /* XXX: implement get and delete for TABLE_T */
-	usertable.del(&usertable, parv[0]);
-	
-	strcpy(oldnick, u.nick);
-	
-	strcpy(u.nick, parv[1]);
-	usertable.put(&usertable, parv[1], &u);
+	if(usertable.get(&usertable, parv[0], &u)) /* XXX: implement get and delete for TABLE_T */
+	{
+	    if(!usertable.del(&usertable, parv[0]))
+		exit(1);
 
-	debug = usertable.getp(&usertable, parv[1]);
-	fprintf(stderr, "nickchange: %s -> %s\n", 
-		oldnick, debug->nick);
-	return 1;
+	    strcpy(u.nick, parv[1]);
+	    u.ts = strtol(parv[2], NULL, 10);
+	    usertable.put(&usertable, parv[1], &u);
+
+	    return 1;
+	}
+	else
+	{
+	    send_out(":%s KILL %s :%s %s<-(?)", me.name, parv[1], me.name, parv[1]);
+	    return 0;
+	}
     }
-    return 1;
 }
 
 int m_error(int parc, char **parv)
 {
-    DUMMY
+    extern void fatal(char *, ...);
+    errno = 0;
+    fatal(parv[1]);
+    return 0;
 }
 int m_notice(int parc, char **parv)
 {
@@ -120,6 +121,7 @@ int m_notice(int parc, char **parv)
 int m_quit(int parc, char **parv)
 {
     usertable.del(&usertable, parv[0]);
+    return 1;
 }
 int m_kill(int parc, char **parv)
 {
@@ -128,11 +130,20 @@ int m_kill(int parc, char **parv)
 int m_motd(int parc, char **parv)
 {
     int i;
-    for (i = 0; i < 40; i++)
+    char *motd[] = 
     {
-	send_out(":%s NOTICE %s : dio porcone animale carogna buco di culo shiatto",
-		me.name, parv[0]);
+	"MOTD",
+	"Sux Services ver 0.01.",
+	"This is the default MOTD.",
+	"To edit it, RTFS.",
+	NULL
+    };
+
+    for (i = 0; motd[i] != NULL; i++)
+    {
+	send_out(rpl_str(RPL_MOTD), me.name, parv[0], motd[i]);
     }
+    send_out(rpl_str(RPL_ENDOFMOTD), me.name, parv[0]);
     return 0;
 }
 int m_server(int parc, char **parv)
@@ -141,7 +152,21 @@ int m_server(int parc, char **parv)
 }
 int m_info(int parc, char **parv)
 {
-    DUMMY
+    int i;
+    char *info[] = 
+    {
+	"INFO",
+	"Sux Services ver 0.01.",
+	"Coded and recoded by a nice coder =).",
+	"mailto: vjt@azzurra.org",
+	NULL
+    };
+    for (i = 0; info[i] != NULL; i++)
+    {
+	send_out(rpl_str(RPL_INFO), me.name, parv[0], info[i]);
+    }
+    send_out(rpl_str(RPL_ENDOFINFO), me.name, parv[0]);
+    return 0;
 }
 int m_stats(int parc, char **parv)
 {
@@ -149,7 +174,7 @@ int m_stats(int parc, char **parv)
 }
 int m_version(int parc, char **parv)
 {
-    send_out(":%s NOTICE %s :%s",
+    send_out(rpl_str(RPL_VERSION),
 	    me.name, parv[0], me.info);
     return 0;
 }
@@ -206,6 +231,18 @@ int m_os(int parc, char **parv)
     DUMMY
 }
 int m_rs(int parc, char **parv)
+{
+    DUMMY
+}
+int m_time(int parc, char **parv)
+{
+    DUMMY
+}
+int m_admin(int parc, char **parv)
+{
+    DUMMY
+}
+int m_gnotice(int parc, char **parv)
 {
     DUMMY
 }

@@ -3,7 +3,7 @@
 
 #include "dbuf.h"
 #define BUFSIZE 512
-#define IOBUFSIZE 8192
+#define IOBUFSIZE 32768
 
 #ifndef MAIN
 # define EXTERN extern
@@ -22,7 +22,6 @@ typedef struct mydata
     char uplink[HOSTLEN];
     unsigned short port;
     
-    char buffer[BUFSIZE+1];
     struct DBuf sendQ;
     struct DBuf recvQ;
 } MyData;

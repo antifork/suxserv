@@ -74,17 +74,17 @@ static void SG_err_func_predef(char *fmt, ...)
  * the allocated memory and exit()s
  * in case of failure.
  */
-void *xmalloc(size_t sz)
+void *xmalloc(size_t x)
 {
-	void *ret = malloc(sz);
-	if(ret == NULL)
+	void *r = malloc(x);
+	if(r == NULL)
 	{
 		/* bad .. */
-		SG_err_func_predef("malloc(%d): %s", sz, strerror(errno)); 
+		SG_err_func_predef("malloc(%d): %s", x, strerror(errno)); 
 		return NULL;
 	}
-	memset(ret, 0x0, sz);
-	return ret;
+	memset(r, 0, x);
+	return r;
 
 }
 
@@ -113,7 +113,7 @@ SEG_T *SG_setup(size_t pagesize, size_t numpages, TABLE_T *table)
  */
 static void realloc_segment (SEG_T *seg)
 {
-	size_t offset;
+	off_t offset;
 	register SEG_T newseg;
 
 	newseg.pagesize = seg->pagesize;
@@ -125,18 +125,19 @@ static void realloc_segment (SEG_T *seg)
 	newseg.bitmapsize = newseg.numpages >> 3;
 	newseg.__firstfree = seg->numpages;
 #ifdef DEBUG
-	printf("realloc(%p, %d)\n", seg->__data, newseg.datasize);
+	printf("realloc(%p, %d) -> ", seg->__data, newseg.datasize);
 #endif
-	if((newseg.__data = realloc(seg->__data, newseg.datasize)) == NULL || errno != 0)
+	if((newseg.__data = realloc(seg->__data, newseg.datasize)) == NULL)
 	{
 		seg->errfunc("failed to realloc() seg->__data from %d bytes to %d bytes: %s\n",
 				seg->datasize, newseg.datasize, strerror(errno));
 		return;
 	}
 #ifdef DEBUG
-	printf("realloc(%p, %d)\n", seg->__bitmap, newseg.bitmapsize);
+	printf("%p\n", newseg.__data);
+	printf("realloc(%p, %d) -> ", seg->__bitmap, newseg.bitmapsize);
 #endif
-	if((newseg.__bitmap = realloc((void*)seg->__bitmap, newseg.bitmapsize)) == NULL || errno != 0)
+	if((newseg.__bitmap = realloc((void*)seg->__bitmap, newseg.bitmapsize)) == NULL)
 	{
 		seg->errfunc("failed to realloc() seg->__bitmap from %d bytes to %d bytes: %s\n",
 				seg->bitmapsize, newseg.bitmapsize, strerror(errno));
@@ -144,7 +145,8 @@ static void realloc_segment (SEG_T *seg)
 	}
 	offset = seg->__data - newseg.__data;
 #ifdef DEBUG
-	printf("realloc data %d to %d, off_t: %d\n", seg->datasize, newseg.datasize, offset);
+	printf("%p\n", newseg.__bitmap);
+	printf("realloc data %d to %d, off_t: %ld\n", seg->datasize, newseg.datasize, offset);
 	printf("realloc bitmap %d to %d, off_t: %d\n", seg->bitmapsize, newseg.bitmapsize, 
 			((void*)seg->__bitmap) - ((void*)newseg.__bitmap));
 #endif
