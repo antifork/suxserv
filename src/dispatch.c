@@ -1,12 +1,13 @@
 #include "sux.h"
 #include "h.h"
 #include "main.h"
-#include "usertable.h"
+#include "table.h"
 #include "numeric.h"
 #include "log.h"
 
 #define DUMMY return 0;
 
+REMOTE_TABLE_INSTANCE(user);
 
 gint m_private(gint parc, gchar **parv)
 {

@@ -4,7 +4,7 @@ LDFLAGS=-L/usr/lib -lglib-2.0 -pg
 CFLAGS=-I../include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -Wall -g -pg -fprofile-arcs
 ME=sux
 
-SOURCES = main.c parse.c dispatch.c match.c usertable.c s_err.c network.c log.c
+SOURCES = main.c parse.c dispatch.c match.c table.c s_err.c network.c log.c
 
 OBJECTS = $(SOURCES:.c=.o)
 
@@ -37,10 +37,10 @@ sux:    $(OBJECTS)
 	
 dispatch.o: dispatch.c \
     ../include/sux.h ../include/h.h ../include/main.h \
-    ../include/usertable.h ../include/numeric.h
+    ../include/table.h ../include/numeric.h
 main.o: main.c \
     ../include/sux.h ../include/main.h ../include/parse.h \
-    ../include/usertable.h ../include/log.h
+    ../include/table.h ../include/log.h
 memory.o: memory.c \
     ../include/sux.h ../include/table.h
 parse.o: parse.c \
@@ -48,9 +48,9 @@ parse.o: parse.c \
     ../include/parse.h ../include/match.h
 s_err.o: s_err.c \
     ../include/sux.h ../include/numeric.h
-usertable.o: usertable.c \
+table.o: table.c \
     ../include/sux.h ../include/table.h ../include/main.h \
-    ../include/usertable.h ../include/match.h
+    ../include/match.h
 network.o: network.c \
     ../include/sux.h ../include/log.h
 log.o: log.c \
