@@ -9,20 +9,59 @@
 
 #define DUMMY return 0;
 
+#define seconds * 1000
+#define minutes * 60 seconds
+#define second seconds
+#define minute minutes
+
+#define PING_FREQUENCY 5 minutes
+#define PING_TIMEOUT 30 seconds
+
 REMOTE_TABLE_INSTANCE(user);
 REMOTE_TABLE_INSTANCE(channel);
 
 REMOTE_MEMPOOL_INSTANCE(cmembers);
 REMOTE_MEMPOOL_INSTANCE(links);
 
-struct
+static struct
 {
     gshort capabs;
     gchar passwd[PASSWDLEN + 1];
     gchar name[PASSWDLEN + 1];
     User *ptr;
+
+    guint ping_tag;
 } uplink;
 
+static gboolean ping_timeout(void)
+{
+    /* ping timeout */
+    if(uplink.ptr)	
+    {
+	send_out("ERROR :Ping Timeout");
+	send_out(":%s SQUIT %s :Ping Timeout (%d usecs)",
+		me.name, uplink.ptr->nick, PING_FREQUENCY);
+    }
+    
+    STOP_RUNNING();
+    
+    return FALSE;
+}
+
+static gboolean send_ping(void)
+{
+    if(uplink.ping_tag != -1)
+    {
+	return ping_timeout();
+    }
+
+    uplink.ping_tag = g_timeout_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
+
+    send_out(":%s PING :%s", me.name, me.name);
+
+    return TRUE;
+}
+    
 void nego_start(void)
 {
     send_out("PASS %s :TS", me.pass);
@@ -30,6 +69,7 @@ void nego_start(void)
     send_out("SVINFO 5 3 0 :%lu", time(NULL));
     send_out("SERVER %s 1 :%s", me.name, me.info);
 
+    uplink.ping_tag = -1;
     uplink.ptr = _TBL(user).alloc(SUX_UPLINK_NAME);
 }
 
@@ -77,10 +117,6 @@ gint m_topic(User *u, gint parc, gchar **parv)
     return 1;
 }
 
-gint m_join(User *u, gint parc, gchar **parv)
-{
-    DUMMY
-}
 gint m_mode(User *u, gint parc, gchar **parv)
 {
     DUMMY
@@ -94,7 +130,12 @@ gint m_ping(User *u, gint parc, gchar **parv)
 
 gint m_pong(User *u, gint parc, gchar **parv)
 {
-    DUMMY
+    if(uplink.ping_tag != -1)
+    {
+	g_source_remove(uplink.ping_tag);
+    }
+
+    return 0;
 }
 gint m_kick(User *u, gint parc, gchar **parv)
 {
@@ -278,11 +319,6 @@ gint m_part(User *u, gint parc, gchar **parv)
     return 1;
 }
 
-gint m_kill(User *u, gint parc, gchar **parv)
-{
-    DUMMY
-}
-
 gint m_motd(User *u, gint parc, gchar **parv)
 {
     gint i;
@@ -352,6 +388,8 @@ gint m_server(User *u, gint parc, gchar **parv)
 
 	u->mode = atoi(parv[2]);
 	strcpy(u->gcos, parv[3]);
+	
+	g_timeout_add(PING_FREQUENCY, (GSourceFunc) send_ping, NULL);
 
 	g_message("Linked with %s [%s], distant %d hop%s",
 		u->nick, u->gcos, u->mode, u->mode != 1 ? "s" : "");
@@ -425,11 +463,6 @@ gint m_pass(User *u, gint parc, gchar **parv)
     g_strlcpy(uplink.passwd, parv[1], sizeof(uplink.passwd));
     
     return 0;
-}
-
-gint m_umode(User *u, gint parc, gchar **parv)
-{
-    DUMMY
 }
 
 /*
