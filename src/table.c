@@ -30,8 +30,8 @@ G_INLINE_FUNC void hash_tbl_dealloc(gchar *key, gpointer *data, GMemChunk *mem_p
 
 #define USER_PREALLOC		1024
 #define CHANNEL_PREALLOC	1024
-#define CMEMBERS_PREALLOC	128
-#define SLINK_PREALLOC		(USER_PREALLOC * 2)
+#define CMEMBERS_PREALLOC	CHANNEL_PREALLOC
+#define SLINK_PREALLOC		(USER_PREALLOC * 4)
 
 TABLE_DECLARE(user, User, FNV_hash, nick, gchar);
 TABLE_DECLARE(channel, Channel, FNV_hash, chname, gchar);
