@@ -76,16 +76,35 @@ static void SG_err_func_predef(char *fmt, ...)
  */
 void *xmalloc(size_t x)
 {
-	void *r = malloc(x);
-	if(r == NULL)
-	{
-		/* bad .. */
-		SG_err_func_predef("malloc(%d): %s", x, strerror(errno)); 
-		return NULL;
-	}
-	memset(r, 0, x);
-	return r;
+    void *r = malloc(x);
+    if(r == NULL)
+    {
+	/* bad .. */
+	SG_err_func_predef("malloc(%d): %s", x, strerror(errno)); 
+	return NULL;
+    }
+    memset(r, 0, x);
+    return r;
+}
 
+/*
+ * non-optimized realloc that zero
+ * the newly allocated memory and
+ * exit()s in case of failure.
+ */
+void *xrealloc(void *ptr, size_t origsz, size_t newsz)
+{
+    void *r = realloc(ptr, newsz);
+
+    if(r == NULL)
+    {
+	SG_err_func_predef("realloc(%p, %d -> %d): %s\n",
+		ptr, origsz, newsz, strerror(errno));
+	return NULL;
+    }
+
+    memset(r + origsz, 0x0, newsz - origsz);
+    return r;
 }
 
 /*
@@ -114,9 +133,7 @@ SEG_T *SG_setup(size_t pagesize, size_t numpages, TABLE_T *table)
 static void realloc_segment (SEG_T *seg)
 {
 	off_t offset;
-	register SEG_T newseg;
-
-	seg->errfunc("BROKEN !!!!!\n"); /* XXX: FIX THIS CRAP ! */
+	SEG_T newseg;
 
 	newseg.pagesize = seg->pagesize;
 	newseg.numpages = seg->numpages << 1;  /* XXX: do this better ..
@@ -128,33 +145,22 @@ static void realloc_segment (SEG_T *seg)
 	newseg.__firstfree = seg->numpages;
 #ifdef DEBUG
 	printf("realloc(%p->%p, %d) -> ", seg->__data, seg->__data + seg->datasize, newseg.datasize);
-#endif
-	if((newseg.__data = realloc(seg->__data, newseg.datasize)) == NULL)
-	{
-		seg->errfunc("failed to realloc() seg->__data from %d bytes to %d bytes: %s\n",
-				seg->datasize, newseg.datasize, strerror(errno));
-		return;
-	}
+#endif	
+	newseg.__data = xrealloc(seg->__data, seg->datasize, newseg.datasize);
+	offset = (off_t)(newseg.__data - seg->__data);
+
 #ifdef DEBUG
 	printf("%p -> %p\n", newseg.__data, newseg.__data + newseg.datasize);
 	printf("realloc(%p, %d) -> ", seg->__bitmap, newseg.bitmapsize);
 #endif
-	if((newseg.__bitmap = realloc((void*)seg->__bitmap, newseg.bitmapsize)) == NULL)
-	{
-		seg->errfunc("failed to realloc() seg->__bitmap from %d bytes to %d bytes: %s\n",
-				seg->bitmapsize, newseg.bitmapsize, strerror(errno));
-		return;
-	}
-	offset = (off_t)(newseg.__data - seg->__data);
+	newseg.__bitmap = xrealloc((void*)seg->__bitmap, seg->bitmapsize, newseg.bitmapsize);
+
 #ifdef DEBUG
 	printf("%p\n", newseg.__bitmap);
 	printf("realloc data %d to %d, off_t: %ld\n", seg->datasize, newseg.datasize, offset);
 	printf("realloc bitmap %d to %d, off_t: %d\n", seg->bitmapsize, newseg.bitmapsize, 
 			((void*)seg->__bitmap) - ((void*)newseg.__bitmap));
 #endif
-	memset(((void*)newseg.__bitmap) + seg->bitmapsize, 0x0,	newseg.bitmapsize - seg->bitmapsize);
-	memset(newseg.__data + seg->datasize, 0x0, newseg.datasize - seg->datasize);
-	
 	seg->numpages = newseg.numpages;
 	seg->datasize = newseg.datasize;
 	seg->bitmapsize = newseg.bitmapsize;
@@ -221,7 +227,6 @@ void *SG_malloc(SEG_T *seg)
 	    fprintf(stderr, "SG_malloc found an OOB pointer ... and tried to return it.");
 	    raise(SIGSEGV);
 	}
-	fprintf(stderr, "%p <=> %p, ret: %p\n", start, end, ret);
 #endif
 	return ret;
 }
@@ -273,7 +278,7 @@ void SG_free(void *p, SEG_T *seg)
 	 */
 
 	/* zero the free()`d page */
-	//memset(p, 0x0, seg->pagesize);
+	memset(p, 0x0, seg->pagesize);
 	
 	return;
 }
