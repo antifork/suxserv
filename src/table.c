@@ -62,8 +62,6 @@ G_INLINE_FUNC guint FNV_hash(guchar *s)
     return h;
 }
 
-#if 0
-
 /* Taner had BITS_PER_COL 4 BITS_PER_COL_MASK 0xF - Dianora */
 
 #define BITS_PER_COL 3
@@ -134,8 +132,6 @@ gint hash_channel_name(guchar *hname)
 	(hash2 & BITS_PER_COL_MASK);
 }
 
-#endif /* 0 */
-
 G_INLINE_FUNC void hash_tbl_dealloc(gchar *key, gpointer *data, GMemChunk *mem_pool)
 {
     g_mem_chunk_free(mem_pool, data);
@@ -146,8 +142,8 @@ G_INLINE_FUNC void hash_tbl_dealloc(gchar *key, gpointer *data, GMemChunk *mem_p
 #define CMEMBERS_PREALLOC	CHANNEL_PREALLOC
 #define SLINK_PREALLOC		(USER_PREALLOC * 4)
 
-TABLE_DECLARE(user, User, FNV_hash, nick, gchar);
-TABLE_DECLARE(channel, Channel, FNV_hash, chname, gchar);
+TABLE_DECLARE(user, User, hash_nick_name, nick, gchar);
+TABLE_DECLARE(channel, Channel, hash_channel_name, chname, gchar);
 
 MEMPOOL_DECLARE(cmembers);
 MEMPOOL_DECLARE(links);
