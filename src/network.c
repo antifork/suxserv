@@ -62,6 +62,24 @@ GIOChannel *connect_server(gchar *host, guint port)
 	{
 	    g_critical(err->message);
 	    g_error_free(err);
+
+	    g_io_channel_shutdown(ret, FALSE, NULL);
+	    g_io_channel_unref(ret);
+
+	    return NULL;
+	}
+
+	g_io_channel_set_flags(ret, G_IO_FLAG_NONBLOCK, &err);
+
+	if(err)
+	{
+	    g_critical(err->message);
+	    g_error_free(err);
+
+	    g_io_channel_shutdown(ret, FALSE, NULL);
+	    g_io_channel_unref(ret);
+
+	    return NULL;
 	}
 
 	g_io_channel_set_buffered(ret, TRUE);
