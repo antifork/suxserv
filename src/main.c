@@ -51,6 +51,7 @@ static void setup_allocators(void);
 static void setup_fds(void);
 static void setup_mutexes(void);
 static void setup_signals(void);
+static void clean_exit(void);
 
 static int start_net_thread(void);
 static int start_parse_thread(void);
@@ -118,7 +119,7 @@ gint main(gint argc, gchar **argv)
 		    g_critical("Received signal %d, quitting", *received_signal);
 		}
 
-		exit(0);
+		clean_exit();
 
 		return 0;
 
@@ -140,6 +141,29 @@ gint main(gint argc, gchar **argv)
     g_critical("Cannot connect to server %s:%d", me.host, me.port);
 
     return -1;
+}
+
+static void clean_exit(void)
+{
+    g_mutex_lock(me.writebuf_mutex);
+    if(me.sendQ->len)
+    {
+	g_io_channel_write_chars(me.handle, me.sendQ->str, me.sendQ->len, NULL, NULL);
+	me.sendQ = g_string_erase(me.sendQ, 0, -1);
+    }
+    net_shutdown(me.handle);
+
+    g_source_del(me.recv_tag);
+    g_source_del(me.err_tag);
+    g_source_del(me.send_tag);
+
+    g_io_channel_unref(me.handle);
+
+    g_main_context_unref(me.ctx);
+
+    g_mutex_unlock(me.writebuf_mutex);
+
+    exit(0);
 }
 
 static void setup_signals(void)
