@@ -189,4 +189,11 @@ struct slink
 #define SUX_CUR_TS	5
 #define SUX_MIN_TS	3
 
+#ifdef G_INLINE_FUNC
+#undef G_INLINE_FUNC
+#endif
+
+#define G_INLINE_FUNC __inline__
+
+
 #endif /* __sux_h__ */
