@@ -1,0 +1,8 @@
+To compile them:
+	./configure
+	make
+
+To run them:
+	src/sux
+
+Edit sux.h or they will not link =)
