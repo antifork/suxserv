@@ -1,4 +1,3 @@
-# Generated automatically from Makefile.in by configure.
 CC=gcc
 RM=/bin/rm
 LDFLAGS=-pg
@@ -29,10 +28,10 @@ sux:    $(OBJECTS)
 	$(CC) ${LDFLAGS} -o $(ME) $(OBJECTS)
 	ln -sf $(ME) a.out
 	
-dbuf.c:./services.h ./dbuf.h ./memory.h
-dispatch.c:./services.h ./h.h ./main.h ./usertable.h ./numeric.h
-main.c:./services.h ./dbuf.h ./main.h ./parse.h ./usertable.h
-memory.c:./services.h ./memory.h
-parse.c:./h.h ./services.h ./main.h ./parse.h ./match.h
-s_err.c:./services.h ./numeric.h
-usertable.c:./services.h ./memory.h ./main.h ./usertable.h ./match.h
+dbuf.o: dbuf.c ./sux.h ./dbuf.h ./memory.h
+dispatch.o: dispatch.c ./sux.h ./h.h ./main.h ./usertable.h ./numeric.h
+main.o: main.c ./sux.h ./dbuf.h ./main.h ./parse.h ./usertable.h
+memory.o: memory.c ./sux.h ./memory.h
+parse.o: parse.c ./h.h ./sux.h ./main.h ./parse.h ./match.h
+s_err.o: s_err.c ./sux.h ./numeric.h
+usertable.o: usertable.c ./sux.h ./memory.h ./main.h ./usertable.h ./match.h

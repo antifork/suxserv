@@ -24,7 +24,7 @@
  * $Id$
  */
 
-#include "services.h"
+#include "sux.h"
 #include "dbuf.h"
 #include "memory.h"
 

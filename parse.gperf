@@ -1,6 +1,6 @@
 %{
 #include "h.h"
-#include "services.h"
+#include "sux.h"
 #include "main.h"
 #include "parse.h"
 #include "match.h"
