@@ -13,13 +13,13 @@
  * #define HASH(sta, end, hash)  while(end != sta) { hash = ((hash * 16777619UL) ^ (*end--)) }
  */
 #define HASHSIZE	1021
-#define MEM_CHUNK	1024
+#define MEM_CHUNK	256
 #define FNV_prime	16777619UL
 typedef unsigned long hash_t;
-static __inline hash_t hash(char *s)
+static __inline hash_t hash(gchar *s)
 {
     hash_t h = 0;
-    char *e = s + strlen(s) - 1;
+    gchar *e = s + strlen(s) - 1;
 
     while(e != s)
 	h = ((h * FNV_prime) ^ *e--);
@@ -28,9 +28,9 @@ static __inline hash_t hash(char *s)
 }
     
 
-static int usertable_init(TABLE_T *d, size_t n)
+static gint usertable_init(TABLE_T *d, size_t n)
 {
-    d->data = xmalloc(sizeof(User*) * n);
+    d->data = g_new0(User*, n);
     d->seg = SG_setup(sizeof(User), MEM_CHUNK, d);
     SG_set_err_func(fatal, d->seg);
 
@@ -40,7 +40,7 @@ static int usertable_init(TABLE_T *d, size_t n)
 /* 
  * usertable.get(usertable, "nick", *ptr_to_allocated_user_space);
  */
-static int usertable_get(TABLE_T *d, char *name, User *u)
+static gint usertable_get(TABLE_T *d, gchar *name, User *u)
 {
     User **t = (User **)d->data;
     hash_t h = hash(name);
@@ -63,7 +63,7 @@ static int usertable_get(TABLE_T *d, char *name, User *u)
     return 0;
 }
 
-static User *usertable_getp(TABLE_T *d, char *name)
+static User *usertable_getp(TABLE_T *d, gchar *name)
 {
     User **t = (User **)d->data;
     hash_t h = hash(name);
@@ -77,7 +77,7 @@ static User *usertable_getp(TABLE_T *d, char *name)
     return p;
 }
 
-static int usertable_put(TABLE_T *d, char *name, User *u)
+static gint usertable_put(TABLE_T *d, gchar *name, User *u)
 {
     User **t = (User **)d->data;
     hash_t h = hash(name);
@@ -90,7 +90,7 @@ static int usertable_put(TABLE_T *d, char *name, User *u)
     return 1;
 }	
 
-static int usertable_del(TABLE_T *d, char *name)
+static gint usertable_del(TABLE_T *d, gchar *name)
 {
     User **t = (User**)d->data;
     hash_t h = hash(name);
@@ -115,9 +115,9 @@ static int usertable_del(TABLE_T *d, char *name)
     return 0;
 }
 
-static int usertable_offupd(TABLE_T *d, off_t offset)
+static gint usertable_offupd(TABLE_T *d, off_t offset)
 {
-    int i;
+    gint i;
     User **t = (User **)d->data;
     User *p;
 
@@ -165,7 +165,7 @@ static int usertable_offupd(TABLE_T *d, off_t offset)
     return 1;
 }
 
-static int usertable_clean(TABLE_T *d)
+static gint usertable_clean(TABLE_T *d)
 {
     free(d->data);
     SG_destroy(d->seg);
@@ -174,7 +174,7 @@ static int usertable_clean(TABLE_T *d)
     return 1;
 }
     
-static User *usertable_alloc(TABLE_T *d, char *name)
+static User *usertable_alloc(TABLE_T *d, gchar *name)
 {
     User **t = (User **)d->data;
     hash_t h = hash(name);
