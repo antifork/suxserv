@@ -1,8 +1,10 @@
 #ifndef __match_h__
 #define __match_h__
 
-int mycmp(const char *, const char *);
-int myncmp(const char *, const char *, int);
+#include "sux.h"
+
+int mycmp(const gchar *, const gchar *);
+int myncmp(const gchar *, const gchar *, int);
 
 #ifdef strcmp
 #undef strcmp

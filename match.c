@@ -1,5 +1,6 @@
+#include "match.h"
 
-unsigned char touppertab[] =
+guchar touppertab[] =
 {
     0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa,
     0xb, 0xc, 0xd, 0xe, 0xf, 0x10, 0x11, 0x12, 0x13, 0x14,
@@ -34,10 +35,10 @@ unsigned char touppertab[] =
 };
 
 /* screw that lexocographic crap, nothing in ircd ever cares */
-int mycmp(const char *s1, const char *s2)
+gint mycmp(const gchar *s1, const gchar *s2)
 {
-    register unsigned const char *str1 = (unsigned char *) s1;
-    register unsigned const char *str2 = (unsigned char *) s2;
+    register const guchar *str1 = (guchar *) s1;
+    register const guchar *str2 = (guchar *) s2;
     while (touppertab[*str1] == touppertab[*str2])
     {
 	if (*str1 == '\0')
@@ -47,10 +48,10 @@ int mycmp(const char *s1, const char *s2)
     return (-1);
 }
 
-int myncmp(const char *str1, const char *str2, int n)
+gint myncmp(const gchar *str1, const gchar *str2, gint n)
 {
-    register unsigned const char *s1 = (unsigned char *) str1;
-    register unsigned const char *s2 = (unsigned char *) str2;
+    register const guchar *s1 = (guchar *) str1;
+    register const guchar *s2 = (guchar *) str2;
     while (touppertab[*s1] == touppertab[*s2])
     {
 	s1++;
