@@ -1,14 +1,16 @@
 #!/bin/sh
 
+mintimeout=30
+
 test -z "$1" &&
 {
     echo "usage: $0 <timeout>";
     exit -1;
 }
 
-test "$1" -lt 60 &&
+test "$1" -lt $mintimeout &&
 {
-    echo "timeouts smaller than 60 secs are NOT recommended !!";
+    echo "timeouts smaller than $mintimeout secs are NOT recommended !!";
     exit 1;
 }
 
