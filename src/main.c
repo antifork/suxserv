@@ -11,21 +11,26 @@ extern gint errno;
 
 static void signal_handler(gint);
 
-gint main(gint argc, gchar **argv)
+static void setup_signals(void)
 {
-    GMainLoop *main_loop;
-
-    strcpy(me.name, "services.azzurra.org");
-    strcpy(me.info, "SuxServices 0.001");
-    strcpy(me.pass, "codio");
-    strcpy(me.host, "homes.vejnet.org");
-
-    me.port = htons(6667);
-
     signal(SIGINT, signal_handler);
     signal(SIGHUP, signal_handler);
     signal(SIGQUIT, signal_handler);
     signal(SIGTERM, signal_handler);
+}
+
+gint main(gint argc, gchar **argv)
+{
+    GMainLoop *main_loop;
+
+    strcpy(me.name, SUX_SERV_NAME);
+    strcpy(me.pass, SUX_PASS);
+    strcpy(me.info, SUX_VERSION);
+    strcpy(me.host, SUX_UPLINK);
+
+    me.port = htons(6667);
+
+    setup_signals();
 
     log_set_tty_wrapper();
 
