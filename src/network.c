@@ -87,7 +87,7 @@ GIOChannel *connect_server(gchar *host, guint port)
     return(ret);
 }
 
-GSource *g_input_add(GIOChannel *handle, GIOCondition cond, GIOFunc callback)
+GSource *g_source_add(GIOChannel *handle, GIOCondition cond, GIOFunc callback)
 {
     GSource *gs;
 
@@ -304,6 +304,6 @@ void send_out(gchar *fmt, ...)
 
     if(me.send_tag == NULL)
     {
-	me.send_tag = g_input_add(me.handle, G_IO_OUT | G_IO_ERR, (GIOFunc)net_send_callback);
+	me.send_tag = g_source_add(me.handle, G_IO_OUT | G_IO_ERR, (GIOFunc)net_send_callback);
     }
 }

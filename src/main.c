@@ -161,11 +161,11 @@ static int start_net_thread(void)
 
     g_message_syslog("Services booting, pid: %d", getpid());
 
-    me.recv_tag = g_input_add(me.handle, G_IO_IN | G_IO_ERR | G_IO_HUP, 
+    me.recv_tag = g_source_add(me.handle, G_IO_IN | G_IO_ERR | G_IO_HUP, 
 	    (GIOFunc) net_receive_callback);
-    me.send_tag = g_input_add(me.handle, G_IO_OUT | G_IO_ERR,
+    me.send_tag = g_source_add(me.handle, G_IO_OUT | G_IO_ERR,
 	    (GIOFunc) net_send_callback);
-    me.err_tag = g_input_add(me.handle, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+    me.err_tag = g_source_add(me.handle, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 	    (GIOFunc) net_err_callback);
 
     nego_start();
