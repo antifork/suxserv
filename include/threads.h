@@ -45,6 +45,7 @@ extern void spawn_threads(void);
 extern void wait_for_termination(void);
 extern void clean_exit(void);
 extern void push_signal(gint *signum);
+extern void start_master_thread(void);
 
 extern G_INLINE_FUNC void g_source_del(GSource *);
 extern G_INLINE_FUNC GSource *g_timeout_source_add(guint, GSourceFunc, gpointer);
