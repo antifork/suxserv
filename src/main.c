@@ -145,6 +145,7 @@ gint main(gint argc, gchar **argv)
 
 static void clean_exit(void)
 {
+#if 0 /* XXX: to be solved */
     g_mutex_lock(me.writebuf_mutex);
     if(me.sendQ->len)
     {
@@ -162,6 +163,7 @@ static void clean_exit(void)
     g_main_context_unref(me.ctx);
 
     g_mutex_unlock(me.writebuf_mutex);
+#endif
 
     exit(0);
 }
