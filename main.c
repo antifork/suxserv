@@ -74,7 +74,7 @@ int connect_server(char *host, unsigned int port)
 
 void dopacket(char *buffer, size_t len)
 {
-    static char buf[BUFSIZE << 1];
+    static char buf[BUFSIZE + 1];
     static short count = 0;
     char *mybuf, *inbuf;
 
@@ -153,6 +153,9 @@ static void io_loop()
     int count = 0;
     
     dbuf_init();
+    DBufClear(&me.sendQ);
+    DBufClear(&me.recvQ);
+
     send_out("PASS %s :TS", me.pass);
     send_out("CAPAB TS3 NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
     send_out("SVINFO 3 1 0 :%lu", time(NULL));
@@ -195,23 +198,20 @@ static void io_loop()
 		while(DBufLength(&me.sendQ))
 		{
 		    char *p = dbuf_map(&me.sendQ, &count);
+		    int w;
 		    if(count <= 0)
 		    {
 			break;
 		    }
-		    if(write(me.sock, p, count) < 0)
+		    if((w = write(me.sock, p, count)) < 0)
 		    {
 			io_error("write()", errno);
 		    }
-		    dbuf_delete(&me.sendQ, count);
-		    
-/*		    if((count = dbuf_get(&me.sendQ, writebuf, IOBUFSIZE)) <= 0)
-			break;*/
-//		    writebuf[count] = '\0';
-//		    if(write(me.sock, writebuf, count) < 0)
-//		    {
-//			io_error("write()", errno);
-//		    }
+
+		    dbuf_delete(&me.sendQ, w);
+
+		    if(w != count)
+			break;
 		} 
 	    }
 
