@@ -446,9 +446,9 @@ static gchar *replies[] =
     /* 424 ERR_FILEERROR */	NULL,
 };
 
-gchar *rpl_str(gint numeric)
+G_INLINE_FUNC gchar *rpl_str(gint numeric)
 {
-    if((numeric<0 || numeric>423) || !replies[numeric])
+    if(G_UNLIKELY((numeric<0 || numeric>423) || !replies[numeric]))
 	return(":%s 999 %s Numeric error! yikes!");
     else
 	return(replies[numeric]);
