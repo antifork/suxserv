@@ -242,27 +242,36 @@ static gboolean remove_user_from_channel(Channel *c, User *u)
 	    c->members = g_slist_remove_link(c->members, johnny);
 	    g_mem_chunk_free(_MPL(cmembers), johnny->data);
 	    g_slist_free_1(johnny);
+
+	    g_return_val_if_fail(u->channels != NULL, -1);
 	    
-	    /* remove this channel from user chanlist */
-	    for(johnny = u->channels; johnny; johnny = g_slist_next(johnny))
-	    {
-		SLink *lp = (SLink *)johnny->data;
-		
-		if(lp->value.c == c)
-		{
-		    u->channels = g_slist_remove_link(u->channels, johnny);
-		    g_mem_chunk_free(_MPL(links), johnny->data);
-		    g_slist_free_1(johnny);
-
-		    break;
-		}
-	    }
-
 	    if(c->members == NULL)
 	    {
 		_TBL(channel).del(c);
 		_TBL(channel).destroy(c);
 	    }
+
+	    return TRUE;
+	}
+    }
+
+    return FALSE;
+}
+
+static gboolean remove_channel_from_user_chanlist(Channel *c, User *u)
+{
+    GSList *johnny; /* the walker */
+
+    /* remove this channel from user chanlist */
+    for(johnny = u->channels; johnny; johnny = g_slist_next(johnny))
+    {
+	SLink *lp = (SLink *)johnny->data;
+	
+	if(lp->value.c == c)
+	{
+	    u->channels = g_slist_remove_link(u->channels, johnny);
+	    g_mem_chunk_free(_MPL(links), johnny->data);
+	    g_slist_free_1(johnny);
 
 	    return TRUE;
 	}
@@ -283,17 +292,19 @@ gint m_quit(User *u, gint parc, gchar **parv)
 
     g_return_val_if_fail(u != NULL, 0);
 
-    for(johnny = u->channels; johnny; johnny = g_slist_next(johnny))
+    if(u->channels)
     {
-	c = ((SLink *)johnny->data)->value.c;
-	g_return_val_if_fail(c != NULL, 0);
+	for(johnny = u->channels; johnny; johnny = g_slist_next(johnny))
+	{
+	    c = ((SLink *)johnny->data)->value.c;
+	    g_return_val_if_fail(c != NULL, 0);
 
-	g_return_val_if_fail(remove_user_from_channel(c, u) == TRUE, -1);
+	    g_return_val_if_fail(remove_user_from_channel(c, u) == TRUE, -1);
+	}
+
+	g_slist_foreach(u->channels, (GFunc) list_free_atoms, _MPL(links));
+	g_slist_free(u->channels);
     }
-
-    g_slist_foreach(u->channels, (GFunc) list_free_atoms, _MPL(links));
-
-    g_slist_free(u->channels);
     
     _TBL(user).del(u);
     _TBL(user).destroy(u);
@@ -322,6 +333,8 @@ gint m_part(User *u, gint parc, gchar **parv)
 
     /* remove this user from the channel memberlist */
     g_return_val_if_fail(remove_user_from_channel(c, u) == TRUE, -1);
+    /* remove this channel from the user chanlist */
+    g_return_val_if_fail(remove_channel_from_user_chanlist(c, u) == TRUE, -1);
 
     return 1;
 }
@@ -346,7 +359,10 @@ gint m_kick(User *u, gint parc, gchar **parv)
     victim = _TBL(user).get(parv[2]);
     g_return_val_if_fail(victim != NULL, -1);
     
+    /* remove this user from the channel memberlist */
     g_return_val_if_fail(remove_user_from_channel(c, u) == TRUE, -1);
+    /* remove this channel from the user chanlist */
+    g_return_val_if_fail(remove_channel_from_user_chanlist(c, u) == TRUE, -1);
     
     return 0;
 }
@@ -794,6 +810,74 @@ gint m_lusers(User *u, gint parc, gchar **parv)
     
     send_out(rpl_str(RPL_GLOBALUSERS),
 	    me.name, u->nick, _TBL(user).count());
+
+    return 0;
+}
+
+/*
+ * m_whois 
+ * parv[0] = sender prefix 
+ * parv[1] = my name
+ * parv[2] = nickname
+ */
+gint m_whois(User *u, gint parc, gchar **parv)
+{
+    User *target, *target_srv;
+    gchar *nick = parv[2];
+    gchar chanbuf[512];
+    gint len, mlen;
+    GSList *johnny; /* walker */
+    Channel *c;
+
+    g_return_val_if_fail(u != NULL, -1);
+
+    target = _TBL(user).get(nick);
+
+    if(target == NULL)
+    {
+	send_out(rpl_str(ERR_NOSUCHNICK),
+		me.name, parv[0], nick);
+
+	return 0;
+    }
+
+    target_srv = _TBL(user).get(target->server);
+    g_return_val_if_fail(target_srv != NULL, -1);
+
+    send_out(rpl_str(RPL_WHOISUSER), me.name,
+	    parv[0], target->nick, target->username,
+	    target->host, target->gcos);
+
+    mlen = strlen(me.name) + strlen(parv[0]) + 6 + strlen(nick);
+    for(len = 0, *chanbuf = '\0', johnny = target->channels;
+	    johnny;
+	    johnny = g_slist_next(johnny))
+    {
+	c = ((SLink*)johnny->data)->value.c;
+	if(len + strlen(c->chname) > sizeof(chanbuf) - 4 - mlen)
+	{
+	    send_out(":%s %d %s %s :%s",
+		    me.name, RPL_WHOISCHANNELS,
+		    parv[0], nick, chanbuf);
+	    *chanbuf = '\0';
+	    len = 0;
+	}
+	strcpy(chanbuf + len, c->chname);
+	len += strlen(c->chname);
+	chanbuf[len++] = ' ';
+	chanbuf[len] = '\0';
+    }
+    if(chanbuf[0] != '\0')
+    {
+	send_out(rpl_str(RPL_WHOISCHANNELS),
+		me.name, parv[0], nick, chanbuf);
+    }
+
+    send_out(rpl_str(RPL_WHOISSERVER),
+	    me.name, parv[0], nick, target->server, target_srv->gcos);
+
+    send_out(rpl_str(RPL_ENDOFWHOIS),
+	    me.name, parv[0], nick);
 
     return 0;
 }
