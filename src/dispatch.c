@@ -602,7 +602,7 @@ G_INLINE_FUNC gint ch_compare(SLink *lp, gchar *s)
     return mycmp(s, lp->value.c->chname);
 }
 
-static gboolean compile_mode(Mode *m, gchar *s, gint parc, gchar **parv)
+static gint compile_mode(Mode *m, gchar *s, gint parc, gchar **parv)
 {
     gint args = 0;
 
@@ -649,18 +649,18 @@ static gboolean compile_mode(Mode *m, gchar *s, gint parc, gchar **parv)
 		g_strlcpy(m->key, parv[4 + args], KEYLEN + 1);
 		args++;
 		if (parc < 5 + args)
-		    return FALSE;
+		    return -1;
 		break;
 	    case 'l':
 		m->limit = atoi(parv[4 + args]);
 		args++;
 		if (parc < 5 + args)
-		    return FALSE;
+		    return -1;
 		break;
 	}
     }
 
-    return TRUE;
+    return args;
 }
 
 static void add_user_to_channel(User *u, Channel *c, guint flags)
@@ -696,7 +696,7 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
 {
     gint ts;
     gchar *channel;
-    gchar *users;
+    gchar *users = NULL;
     gchar *modes;
     gchar **users_arr;
     gchar *s;
@@ -728,21 +728,24 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
     else
     {
 	/* server sjoin with modes and users */
+	gint args;
 
 	modes = parv[3];
-	users = parv[4];
 	
 	c->ts = ts;
 	c->bans = NULL;
 	c->members = NULL;
-	if(compile_mode(&mode, modes, parc, parv) == FALSE)
+	if((args = compile_mode(&mode, modes, parc, parv)) < 0)
 	{
 	    g_warning("failed mode compilation on %s", modes);
 	    memset(&c->mode, 0x0, sizeof(Mode));
 	    return 0;
 	}
 	c->mode = mode;
+	users = parv[4 + args];
     }
+
+    g_return_val_if_fail(users != NULL, -1);
 
     users_arr = g_strsplit(users, " ", 0);
     for(i = 0; users_arr[i] != NULL; i++)
@@ -782,19 +785,19 @@ gint m_capab(User *u, gint parc, gchar **parv)
 
     for(i = 1; i < parc; i++)
     {
-	if (mycmp(parv[i], "NOQUIT") == 0)
+	if (!mycmp(parv[i], "NOQUIT"))
 	    uplink.capabs |= CAPAB_NOQUIT;
-	else if (mycmp(parv[i], "BURST") == 0)
+	else if (!mycmp(parv[i], "BURST"))
 	    uplink.capabs |= CAPAB_BURST;
-	else if (mycmp(parv[i], "UNCONNECT") == 0)
+	else if (!mycmp(parv[i], "UNCONNECT"))
 	    uplink.capabs |= CAPAB_UNCONN;
-	else if (mycmp(parv[i], "DKEY") == 0)
+	else if (!mycmp(parv[i], "DKEY"))
 	    uplink.capabs |= CAPAB_DKEY;
-	else if (mycmp(parv[i], "ZIP") == 0)
+	else if (!mycmp(parv[i], "ZIP"))
 	    uplink.capabs |= CAPAB_ZIP;
-	else if (mycmp(parv[i], "NICKIP") == 0)
+	else if (!mycmp(parv[i], "NICKIP"))
 	    uplink.capabs |= CAPAB_NICKIP;
-	else if (mycmp(parv[i], "TSMODE") == 0)
+	else if (!mycmp(parv[i], "TSMODE"))
 	    uplink.capabs |= CAPAB_TSMODE;
     }
 
