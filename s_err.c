@@ -17,7 +17,7 @@
 #include "sux.h"
 #include "numeric.h"
 
-static char *replies[] = 
+static gchar *replies[] = 
 {
     /* 000 */			NULL,
     /* 001 RPL_WELCOME */	NULL,
@@ -446,7 +446,7 @@ static char *replies[] =
     /* 424 ERR_FILEERROR */	NULL,
 };
 
-char *rpl_str(int numeric)
+gchar *rpl_str(gint numeric)
 {
     if((numeric<0 || numeric>423) || !replies[numeric])
 	return(":%s 999 %s Numeric error! yikes!");
