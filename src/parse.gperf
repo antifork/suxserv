@@ -43,6 +43,7 @@ SERVER, m_server, 0
 TIME, m_time, 0
 TOPIC, m_topic, 0
 VERSION, m_version, 0
+WHOIS, m_whois, 0
 NS, m_ns, 0
 CS, m_rs, 0
 MS, m_cs, 0

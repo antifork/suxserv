@@ -31,6 +31,7 @@ extern gint  m_admin(User *, gint, gchar **);
 extern gint  m_gnotice(User *, gint, gchar **);
 extern gint  m_nickcoll(User *, gint, gchar **);
 extern gint  m_lusers(User *, gint, gchar **);
+extern gint  m_whois(User *, gint, gchar **);
 extern gint  m_cs(User *, gint, gchar **);
 extern gint  m_ns(User *, gint, gchar **);
 extern gint  m_os(User *, gint, gchar **);
