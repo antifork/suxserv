@@ -6,8 +6,8 @@
 #define SOMATIZZA 0x2
 
 
-guint girls;
-guint man;
+guint girls, man, autismo;
+guint64 happyness;
 
 while(TRUE)
 {
@@ -16,7 +16,17 @@ while(TRUE)
 
 while(G_LIKELY(girls & FINGER_IN_THE_ASS)) // almost unuseful
 {
-    man |= SOMATIZZA; // && !autismo
+    man |= SOMATIZZA;
+}
+
+if(man & SOMATIZZA)
+{
+    autismo--;
+}
+else
+{
+    autismo++;
+    happyness << 1;
 }
 
 [...]
