@@ -12,7 +12,8 @@
  *
  * #define HASH(sta, end, hash)  while(end != sta) { hash = ((hash * 16777619UL) ^ (*end--)) }
  */
-#define HASHSIZE	1024
+#define HASHSIZE	1021
+#define MEM_CHUNK	256
 #define FNV_prime	16777619UL
 typedef unsigned long hash_t;
 static __inline hash_t hash(char *s)
@@ -30,7 +31,7 @@ static __inline hash_t hash(char *s)
 static int usertable_init(TABLE_T *d, size_t n)
 {
     d->data = xmalloc(sizeof(User*) * n);
-    d->seg = SG_setup(sizeof(User), n, d);
+    d->seg = SG_setup(sizeof(User), MEM_CHUNK, d);
     SG_set_err_func(fatal, d->seg);
 
     return 1;
@@ -108,7 +109,6 @@ static int usertable_del(TABLE_T *d, char *name)
 	else if(p2 != NULL) /* was any entry in the middle, or the last entry .. */
 	    p2->next = p->next;
 
-	memset((void*)p, 0x0, sizeof(User));
 	SG_free(p, d->seg);
 	return 1;
     }
@@ -136,20 +136,19 @@ static int usertable_offupd(TABLE_T *d, off_t offset)
 	p = t[i];
 	while(p->next)
 	{
-	    printf("moving %p ..\n", p->next);
 	    ((void*)p->next) += offset;
 	    
-	    /*
+#ifdef DEBUG
 	    if((void*)p->next < start || (void*)p->next > end)
 	    {
 		fprintf(stderr, "usertable_offupd created an OOB pointer ...");
 		raise(SIGSEGV);
 	    }
-*/
+#endif
 	    p = p->next;
 	}
     }
-#ifdef DEBUG
+#if 0
     printf("data [%p <-> %p]\n", start, end);
     for(i = 0; i < HASHSIZE; i++)
     {
