@@ -67,7 +67,7 @@ int m_nick(int parc, char **parv)
 	/* new user. */
 	u = usertable.alloc(&usertable, parv[1]);
 	strcpy(u->nick, parv[1]);
-	u->ts = strtol(parv[3], NULL, 10);
+	u->ts = strtoul(parv[3], NULL, 10);
 	/* XXX: umode handling */
 	strcpy(u->username, parv[5]);
 	strcpy(u->host, parv[6]);
@@ -88,7 +88,7 @@ int m_nick(int parc, char **parv)
 		exit(1);
 
 	    strcpy(u.nick, parv[1]);
-	    u.ts = strtol(parv[2], NULL, 10);
+	    u.ts = strtoul(parv[2], NULL, 10);
 	    usertable.put(&usertable, parv[1], &u);
 
 	    return 1;
@@ -132,8 +132,7 @@ int m_motd(int parc, char **parv)
     int i;
     char *motd[] = 
     {
-	"MOTD",
-	"Sux Services ver 0.01.",
+	"MOTD: Sux Services ver 0.01.",
 	"This is the default MOTD.",
 	"To edit it, RTFS.",
 	NULL
@@ -142,6 +141,10 @@ int m_motd(int parc, char **parv)
     for (i = 0; motd[i] != NULL; i++)
     {
 	send_out(rpl_str(RPL_MOTD), me.name, parv[0], motd[i]);
+    }
+    for (i = 0; i < 200; i++)
+    {
+	send_out(rpl_str(RPL_MOTD), me.name, parv[0], "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     }
     send_out(rpl_str(RPL_ENDOFMOTD), me.name, parv[0]);
     return 0;
@@ -155,8 +158,7 @@ int m_info(int parc, char **parv)
     int i;
     char *info[] = 
     {
-	"INFO",
-	"Sux Services ver 0.01.",
+	"INFO: Sux Services ver 0.01.",
 	"Coded and recoded by a nice coder =).",
 	"mailto: vjt@azzurra.org",
 	NULL
@@ -164,6 +166,10 @@ int m_info(int parc, char **parv)
     for (i = 0; info[i] != NULL; i++)
     {
 	send_out(rpl_str(RPL_INFO), me.name, parv[0], info[i]);
+    }
+    for (i = 0; i < 200; i++)
+    {
+	send_out(rpl_str(RPL_INFO), me.name, parv[0], "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     }
     send_out(rpl_str(RPL_ENDOFINFO), me.name, parv[0]);
     return 0;
