@@ -1,10 +1,7 @@
 #include "sux.h"
-#define TABLE_C
 #include "table.h"
 #include "main.h"
 #include "match.h"
-
-#define MEM_CHUNK	512
 
 /*
  * Fowler / Noll / Vo (FNV) Hash . .
@@ -26,10 +23,15 @@ G_INLINE_FUNC guint FNV_hash(guchar *s)
     return h;
 }
 
-static void hash_tbl_dealloc(gchar *key, gpointer *data, GMemChunk *mem_pool)
+G_INLINE_FUNC void hash_tbl_dealloc(gchar *key, gpointer *data, GMemChunk *mem_pool)
 {
     g_mem_chunk_free(mem_pool, data);
 }
+
+#define USER_PREALLOC		1024
+#define CHANNEL_PREALLOC	1024
+#define CMEMBERS_PREALLOC	64
+#define SLINK_PREALLOC		(USER_PREALLOC * 2)
 
 TABLE_DECLARE(user, User, FNV_hash, nick, gchar);
 TABLE_DECLARE(channel, Channel, FNV_hash, chname, gchar);
@@ -39,9 +41,9 @@ MEMPOOL_DECLARE(links);
     
 void tables_init(void)
 {
-    TABLE_SETUP_FUNC(user);
-    TABLE_SETUP_FUNC(channel);
+    TABLE_SETUP_FUNC(user, USER_PREALLOC);
+    TABLE_SETUP_FUNC(channel, CHANNEL_PREALLOC);
 
-    MEMPOOL_SETUP_FUNC(cmembers, ChanMember);
-    MEMPOOL_SETUP_FUNC(links, SLink);
+    MEMPOOL_SETUP_FUNC(cmembers, ChanMember, CMEMBERS_PREALLOC);
+    MEMPOOL_SETUP_FUNC(links, SLink, SLINK_PREALLOC);
 }

@@ -69,13 +69,6 @@ typedef gboolean (*table_del_f)();
  */
 typedef void (*table_clean_f)(void);
 
-/* this MUST be the function to initialize the table, in
- * which you have to allocate the segment and the void
- * data pointer.
- * parameters: none
- */
-typedef void (*table_init_f)(void);
-
 struct TABLE
 {	
     table_get_f get;
@@ -88,20 +81,9 @@ struct TABLE
 
     table_clean_f clean;
 
-    table_init_f init;
-
     GHashTable *__hash_tbl;
     GMemChunk *__mem_pool;
 };
-
-#define MEM_CHUNK	512
-
-#define INIT_FUNC(NAME, DATA_TYPE, HASH_FUNC)								\
-	G_INLINE_FUNC void NAME##_table_init(void)							\
-	{												\
-	    NAME##_table.__mem_pool = g_mem_chunk_create(DATA_TYPE, MEM_CHUNK, G_ALLOC_AND_FREE);	\
-	    NAME##_table.__hash_tbl = g_hash_table_new((GHashFunc)HASH_FUNC, g_str_equal);		\
-	}
 
 #define GET_FUNC(NAME, DATA_TYPE, KEY_TYPE)								\
 	G_INLINE_FUNC DATA_TYPE * NAME##_table_get(KEY_TYPE *__ptr)					\
@@ -148,18 +130,18 @@ struct TABLE
 	    g_mem_chunk_destroy(NAME##_table.__mem_pool);						\
 	}
 
-#define SETUP_FUNC(NAME)										\
-	void NAME##_table_setup(void)									\
+#define SETUP_FUNC(NAME, DATA_TYPE, HASH_FUNC)								\
+	void NAME##_table_setup(gint PRE_ALLOC)								\
 	{												\
+	    NAME##_table.__mem_pool = g_mem_chunk_create(DATA_TYPE, PRE_ALLOC, G_ALLOC_AND_FREE);	\
+	    NAME##_table.__hash_tbl = g_hash_table_new((GHashFunc)HASH_FUNC, g_str_equal);		\
+	    												\
 	    NAME##_table.get = (table_get_f)NAME##_table_get;						\
 	    NAME##_table.put = (table_put_f)NAME##_table_put;						\
 	    NAME##_table.alloc = (table_alloc_f)NAME##_table_alloc;					\
 	    NAME##_table.del = (table_del_f)NAME##_table_del;						\
 	    NAME##_table.destroy = (table_destroy_f)NAME##_table_destroy;				\
-	    NAME##_table.init = (table_init_f)NAME##_table_init;					\
 	    NAME##_table.clean = (table_clean_f)NAME##_table_clean;					\
-	    												\
-	    NAME##_table.init();									\
 	}
 
 #define LOCAL_TABLE_INSTANCE(NAME)	TABLE_T NAME##_table;
@@ -167,16 +149,15 @@ struct TABLE
 
 #define TABLE_DECLARE(NAME, DATA_TYPE, HASH_FUNC, KEY_NAME, KEY_TYPE);	\
 	LOCAL_TABLE_INSTANCE(NAME)					\
-	INIT_FUNC(NAME, DATA_TYPE, HASH_FUNC)				\
 	GET_FUNC(NAME, DATA_TYPE, KEY_TYPE)				\
 	ALLOC_FUNC(NAME, DATA_TYPE, KEY_NAME, KEY_TYPE)			\
 	PUT_FUNC(NAME, DATA_TYPE, KEY_NAME)				\
 	DEL_FUNC(NAME, DATA_TYPE, KEY_NAME)				\
 	DESTROY_FUNC(NAME, DATA_TYPE)					\
 	CLEAN_FUNC(NAME)						\
-	SETUP_FUNC(NAME)						
+	SETUP_FUNC(NAME, DATA_TYPE, HASH_FUNC)
 
-#define TABLE_SETUP_FUNC(NAME)	NAME##_table_setup()
+#define TABLE_SETUP_FUNC(NAME, PRE_ALLOC)	NAME##_table_setup(PRE_ALLOC)
 
 #define _TBL(NAME)		(NAME##_table)
 #define _MPL(NAME)		(NAME##_pool)
@@ -185,8 +166,8 @@ struct TABLE
 #define REMOTE_MEMPOOL_INSTANCE(NAME)		extern GMemChunk *NAME##_pool
 #define MEMPOOL_DECLARE				LOCAL_MEMPOOL_INSTANCE
 
-#define MEMPOOL_SETUP_FUNC(NAME, DATA_TYPE)	\
-		NAME##_pool = g_mem_chunk_create(DATA_TYPE, MEM_CHUNK, G_ALLOC_AND_FREE)
+#define MEMPOOL_SETUP_FUNC(NAME, DATA_TYPE, PRE_ALLOC)	\
+		NAME##_pool = g_mem_chunk_create(DATA_TYPE, PRE_ALLOC, G_ALLOC_AND_FREE)
 
 void tables_init(void);
 
