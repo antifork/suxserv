@@ -15,20 +15,28 @@ typedef struct mydata
     time_t boot;
     GIOChannel *handle;
 
-    char host[HOSTLEN];
-    char name[HOSTLEN];
-    char info[INFOLEN];
-    char pass[NICKLEN];
-    char uplink[HOSTLEN];
-    unsigned short port;
+    gchar host[HOSTLEN],
+    	name[HOSTLEN],
+	info[INFOLEN],
+	pass[NICKLEN],
+	uplink[HOSTLEN];
+	
+    gushort port;
 
-    int send_tag;
+    gint send_tag,
+    	recv_tag,
+	err_tag;
 
 } MyData;
 
 EXTERN MyData me;
-EXTERN void (*fatal)(char *fmt, ...);
-EXTERN void (*warn)(char *fmt, ...);
+
+#define RUNNING_DECLARE()	EXTERN	gboolean __is_running
+#define START_RUNNING()		__is_running = TRUE
+#define STOP_RUNNING()		__is_running = FALSE
+#define IS_RUNNING()		(__is_running == TRUE)
+
+RUNNING_DECLARE();
 
 #undef EXTERN
 #endif
