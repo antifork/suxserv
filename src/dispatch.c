@@ -95,7 +95,9 @@ void nego_start(void)
 {
     send_out("PASS %s :TS", me.pass);
     send_out("CAPAB BURST NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
+    g_mutex_lock(me.time_mutex);
     send_out("SVINFO 5 3 0 :%lu", NOW);
+    g_mutex_unlock(me.time_mutex);
     send_out("SERVER %s 1 :%s", me.name, me.info);
 
     uplink.ping_tag = g_timeout_source_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
@@ -185,8 +187,7 @@ gint m_pong(User *u, gint parc, gchar **parv)
 
     if(uplink.ping_tag)
     {
-	g_return_val_if_fail(g_source_del(uplink.ping_tag) == TRUE, -1);
-	uplink.ping_tag = NULL;
+	g_source_del(&uplink.ping_tag);
 	return 0;
     }
 
@@ -202,7 +203,7 @@ gint m_pong(User *u, gint parc, gchar **parv)
 		"sending topic burst.", me.name, u->nick);
 
 	uplink.flags |= FLAGS_SOBSENT;
-	/* XXX: send topic burst */
+	/* XXX: send shun/topic burst */
 	send_out("PING :%s", me.name);
     }
     else if(uplink.flags & FLAGS_TOPICBURST)
@@ -284,7 +285,7 @@ gint m_nick(User *u, gint parc, gchar **parv)
  */
 gint m_error(User *u, gint parc, gchar **parv)
 {
-    g_critical_syslog("%s", parv[1]);
+   // g_critical_syslog("%s", parv[1]);
 
     return 0;
 }
@@ -304,23 +305,20 @@ static void list_free_atoms(gpointer *data, GMemChunk *chunk)
 
 static gboolean remove_user_from_channel(Channel *c, User *u)
 {
-    register GSList *johnny; /* the walker */
-    register ChanMember *cm;
+    GSList *johnny = c->members; /* walker */
 
-    for(johnny = c->members; johnny; johnny = g_slist_next(johnny))
+    while(johnny)
     {
-	g_return_val_if_fail(johnny->data != NULL, FALSE);
-
-	cm = (ChanMember *) johnny->data;
-	g_return_val_if_fail(cm->u != NULL, 0);
-
-	if(cm->u == u)
+	if(((ChanMember*)johnny->data)->u == u)
 	{
 	    c->members = g_slist_remove_link(c->members, johnny);
 	    g_mem_chunk_free(_MPL(cmembers), johnny->data);
 	    g_slist_free_1(johnny);
 
 	    g_return_val_if_fail(u->channels != NULL, -1);
+
+//	    g_fprintf(stderr, "rem %s -> %s\n",
+//		    u->nick, c->chname);
 
 	    if(c->members == NULL)
 	    {
@@ -330,9 +328,16 @@ static gboolean remove_user_from_channel(Channel *c, User *u)
 
 	    return TRUE;
 	}
+
+	johnny = g_slist_next(johnny);
     }
 
+    g_critical("user %s not found in channel %s (sux !)\n",
+	    u->nick, c->chname);
+
     return FALSE;
+
+    return TRUE;
 }
 
 static gboolean remove_channel_from_user_chanlist(Channel *c, User *u)
@@ -525,12 +530,15 @@ gint m_server(User *u, gint parc, gchar **parv)
 	
 	if(uplink.ping_tag)
 	{
-	    g_source_del(uplink.ping_tag);
-	    uplink.ping_tag = NULL;
+	    g_source_del(&uplink.ping_tag);
 	}
+
 	g_timeout_source_add(PING_FREQUENCY, (GSourceFunc) send_ping, u);
 
+	g_mutex_lock(me.time_mutex);
 	uplink.firsttime = NOW;
+	g_mutex_unlock(me.time_mutex);
+
 	send_out(":%s GNOTICE :Link with %s[%s] established, states: TS",
 		me.name, u->nick, SUX_UPLINK_HOST);
 	
@@ -611,7 +619,12 @@ gint m_stats(User *u, gint parc, gchar **parv)
 	case 'U':
 	case 'u':
 	    {
-		time_t now = NOW - me.boot;
+		time_t now;
+		
+		g_mutex_lock(me.time_mutex);
+		now = NOW - me.boot;
+		g_mutex_unlock(me.time_mutex);
+
 		send_out(rpl_str(RPL_STATSUPTIME), me.name, parv[0],
 			now / 86400, (now / 3600) % 24, (now / 60) % 60, now % 60);
 	    }
@@ -676,13 +689,20 @@ gint m_pass(User *u, gint parc, gchar **parv)
  */
 gint m_svinfo(User *u, gint parc, gchar **parv)
 {
-    time_t deltat, theirtime;
+    time_t deltat, theirtime, now;
     guint their_ts_ver, their_ts_min_ver;
+
+    g_mutex_lock(me.time_mutex);
+    now = NOW;
+    g_mutex_unlock(me.time_mutex);
 
     g_return_val_if_fail(parc > 4, -1);
 
     theirtime = atol(parv[4]);
-    deltat = ABS(theirtime - NOW);
+
+    g_mutex_lock(me.time_mutex);
+    deltat = ABS(theirtime - now);
+    g_mutex_unlock(me.time_mutex);
 
     if(deltat > 45)
     {
@@ -693,7 +713,7 @@ gint m_svinfo(User *u, gint parc, gchar **parv)
     else if(deltat > 15)
     {
 	g_warning("Link %s notable TS delta (my TS=%ld, their TS=%ld, delta=%ld",
-		u->nick, NOW, theirtime, deltat);
+		u->nick, now, theirtime, deltat);
     }
 
     their_ts_ver = atoi(parv[1]);
@@ -800,6 +820,8 @@ static void add_user_to_channel(User *u, Channel *c, guint flags)
 
     u->channels = g_slist_prepend(u->channels, lp);
     c->members = g_slist_prepend(c->members, cm);
+
+//    g_fprintf(stderr, "add %s -> %s\n", u->nick, c->chname);
 }
 
 /*
@@ -1012,7 +1034,11 @@ gint m_burst(User *u, gint parc, gchar **parv)
     if(parc == 2)
     {
 	/* this is an EOB */
-	time_t synch_time = NOW - uplink.firsttime;
+	time_t synch_time;
+	
+	g_mutex_lock(me.time_mutex);
+	synch_time = NOW - uplink.firsttime;
+	g_mutex_unlock(me.time_mutex);
 
 	uplink.flags &= ~FLAGS_EOBRECV;
 	if(uplink.flags & (FLAGS_SOBSENT|FLAGS_BURST))

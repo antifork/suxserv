@@ -68,6 +68,8 @@ typedef struct mydata
 
     GString *sendQ, *recvQ;
 
+    GThread *net_thr, *parse_thr, *sig_thr;
+
     GMutex *ctx_mutex, *time_mutex;
     GCond *ctx_cond;
     GPollFD fds[4];

@@ -155,20 +155,33 @@ GSource *g_timeout_source_add(guint interval, GSourceFunc callback, gpointer use
     g_mutex_lock(me.ctx_mutex);
     g_source_attach(gs, me.ctx);
     g_mutex_unlock(me.ctx_mutex);
-    
+
     g_source_unref(gs);
 
     return gs;
 }
 
-gboolean g_source_del(GSource *gs)
+gboolean g_source_del(GSource **gs)
 {
-    g_return_val_if_fail(gs != NULL, FALSE);
+    g_return_val_if_fail(*gs != NULL, FALSE);
     
     g_mutex_lock(me.ctx_mutex);
-    g_source_destroy(gs);
-    g_source_unref(gs);
+    g_source_destroy(*gs);
+    g_source_unref(*gs);
+    *gs = NULL;
     g_mutex_unlock(me.ctx_mutex);
+
+
+    return TRUE;
+}
+
+gboolean g_source_del_nolock(GSource **gs)
+{
+    g_return_val_if_fail(*gs != NULL, FALSE);
+    
+    g_source_destroy(*gs);
+    g_source_unref(*gs);
+    *gs = NULL;
 
     return TRUE;
 }
@@ -229,11 +242,13 @@ gboolean net_receive_callback(GIOChannel *handle)
 
 		return TRUE;
 	    case G_IO_STATUS_ERROR:
+		g_source_del(&me.recv_tag);
 		g_critical_syslog("Read error: %s", err->message);
 		g_error_free(err);
 		return FALSE;
     
 	    case G_IO_STATUS_EOF:
+		g_source_del(&me.recv_tag);
 		g_critical_syslog("Read error: Connection closed");
 		return FALSE;
 
@@ -268,6 +283,7 @@ gboolean net_send_callback(GIOChannel *dest)
 	switch(g_io_channel_write_chars(dest, net_w_buf->str, net_w_buf->len, &bytes_written, &err))
 	{
 	    case G_IO_STATUS_ERROR:
+		g_source_del(&me.send_tag);
 		g_critical_syslog("Write error: %s", err->message);
 		g_error_free(err);
 		return FALSE;
@@ -282,11 +298,9 @@ gboolean net_send_callback(GIOChannel *dest)
 		}
 
 		g_mutex_lock(me.ctx_mutex);
-		if(me.send_tag)
+		if(!net_w_buf->len && me.send_tag)
 		{
-		    g_source_destroy(me.send_tag);
-		    g_source_unref(me.send_tag);
-		    me.send_tag = NULL;
+		    g_source_del_nolock(&me.send_tag);
 		}
 		g_mutex_unlock(me.ctx_mutex);
 
