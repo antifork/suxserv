@@ -92,119 +92,6 @@
 #define RPL_SILELIST         271
 #define RPL_ENDOFSILELIST    272
 
-#define RPL_TRACELINK        200
-#define RPL_TRACECONNECTING  201
-#define RPL_TRACEHANDSHAKE   202
-#define RPL_TRACEUNKNOWN     203
-#define RPL_TRACEOPERATOR    204
-#define RPL_TRACEUSER        205
-#define RPL_TRACESERVER      206
-#define RPL_TRACENEWTYPE     208
-#define RPL_TRACECLASS       209
-
-#define RPL_STATSLINKINFO    211
-#define RPL_STATSCOMMANDS    212
-#define RPL_STATSCLINE       213
-#define RPL_STATSNLINE       214
-#define RPL_STATSILINE       215
-#define RPL_STATSKLINE       216
-#define RPL_STATSQLINE       217
-#define RPL_STATSYLINE       218
-#define RPL_ENDOFSTATS       219
-
-#define RPL_UMODEIS          221
-
-#define RPL_STATSBLINE	     222
-#define RPL_STATSELINE	     223
-#define RPL_STATSFLINE	     224
-#define RPL_STATSZLINE	     225
-#define RPL_STATSGLINE       227
-
-#define RPL_SERVLIST         234
-#define RPL_SERVLISTEND      235
-
-#define	RPL_STATSLLINE       241
-#define	RPL_STATSUPTIME      242
-#define	RPL_STATSOLINE       243
-#define	RPL_STATSHLINE       244
-#define	RPL_STATSSLINE       245
-#define RPL_STATSULINE	     246
-#define	RPL_STATSDEBUG	     249
-
-#define	RPL_LUSERCLIENT      251
-#define RPL_LUSEROP          252
-#define	RPL_LUSERUNKNOWN     253
-#define	RPL_LUSERCHANNELS    254
-#define	RPL_LUSERME          255
-#define	RPL_ADMINME          256
-#define	RPL_ADMINLOC1        257
-#define	RPL_ADMINLOC2        258
-#define	RPL_ADMINEMAIL       259
-
-#define	RPL_TRACELOG         261
-#define RPL_ENDOFTRACE       262
-#define RPL_LOAD2HI          263
-
-#ifdef CLIENT_COUNT
-#define RPL_LOCALUSERS       265
-#define RPL_GLOBALUSERS      266
-#endif
-#define RPL_SILELIST         271
-#define RPL_ENDOFSILELIST    272
-
-#define RPL_TRACELINK        200
-#define RPL_TRACECONNECTING  201
-#define RPL_TRACEHANDSHAKE   202
-#define RPL_TRACEUNKNOWN     203
-#define RPL_TRACEOPERATOR    204
-#define RPL_TRACEUSER        205
-#define RPL_TRACESERVER      206
-#define RPL_TRACENEWTYPE     208
-#define RPL_TRACECLASS       209
-
-#define RPL_STATSLINKINFO    211
-#define RPL_STATSCOMMANDS    212
-#define RPL_STATSCLINE       213
-#define RPL_STATSNLINE       214
-#define RPL_STATSILINE       215
-#define RPL_STATSKLINE       216
-#define RPL_STATSQLINE       217
-#define RPL_STATSYLINE       218
-#define RPL_ENDOFSTATS       219
-
-#define RPL_UMODEIS          221
-
-#define RPL_STATSBLINE	     222
-#define RPL_STATSELINE	     223
-#define RPL_STATSFLINE	     224
-#define RPL_STATSZLINE	     225
-#define RPL_STATSGLINE       227
-
-#define RPL_SERVLIST         234
-#define RPL_SERVLISTEND      235
-
-#define	RPL_STATSLLINE       241
-#define	RPL_STATSUPTIME      242
-#define	RPL_STATSOLINE       243
-#define	RPL_STATSHLINE       244
-#define	RPL_STATSSLINE       245
-#define RPL_STATSULINE	     246
-#define	RPL_STATSDEBUG	     249
-
-#define	RPL_LUSERCLIENT      251
-#define RPL_LUSEROP          252
-#define	RPL_LUSERUNKNOWN     253
-#define	RPL_LUSERCHANNELS    254
-#define	RPL_LUSERME          255
-#define	RPL_ADMINME          256
-#define	RPL_ADMINLOC1        257
-#define	RPL_ADMINLOC2        258
-#define	RPL_ADMINEMAIL       259
-
-#define	RPL_TRACELOG         261
-#define RPL_ENDOFTRACE       262
-#define RPL_LOAD2HI          263
-
 #define RPL_USINGSSL         275
 
 #define	RPL_NONE             300
@@ -301,15 +188,6 @@
 #define	RPL_USERS            393
 #define	RPL_ENDOFUSERS       394
 #define	RPL_NOUSERS          395
-
-
-
-#ifdef CLIENT_COUNT
-# define RPL_LOCALUSERS      265
-# define RPL_GLOBALUSERS     266
-#endif
-#define RPL_SILELIST         271
-#define RPL_ENDOFSILELIST    272
 
 #define ERR_NOSUCHNICK       401
 #define ERR_NOSUCHSERVER     402
