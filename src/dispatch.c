@@ -14,7 +14,7 @@
 #define second seconds
 #define minute minutes
 
-#define PING_FREQUENCY 5 minutes
+#define PING_FREQUENCY 10 minutes
 #define PING_TIMEOUT 30 seconds
 
 REMOTE_TABLE_INSTANCE(user);
@@ -33,14 +33,14 @@ static struct
     guint ping_tag;
 } uplink;
 
-static gboolean ping_timeout(void)
+static gboolean ping_timeout(User *u)
 {
     /* ping timeout */
-    if(uplink.ptr)	
+    if(u)
     {
 	send_out("ERROR :Ping Timeout");
 	send_out(":%s SQUIT %s :Ping Timeout (%d usecs)",
-		me.name, uplink.ptr->nick, PING_FREQUENCY);
+		me.name, u->nick, PING_FREQUENCY);
     }
     
     STOP_RUNNING();
@@ -48,16 +48,16 @@ static gboolean ping_timeout(void)
     return FALSE;
 }
 
-static gboolean send_ping(void)
+static gboolean send_ping(User *u)
 {
     if(uplink.ping_tag != -1)
     {
-	return ping_timeout();
+	return ping_timeout(u);
     }
 
-    uplink.ping_tag = g_timeout_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
+    uplink.ping_tag = g_timeout_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, u);
 
-    send_out(":%s PING :%s", me.name, me.name);
+    send_out(":%s PING :%s", me.name, u->nick);
 
     return TRUE;
 }
@@ -132,7 +132,9 @@ gint m_pong(User *u, gint parc, gchar **parv)
 {
     if(uplink.ping_tag != -1)
     {
-	g_source_remove(uplink.ping_tag);
+	g_return_val_if_fail(g_source_remove(uplink.ping_tag) == TRUE, -1);
+	uplink.ping_tag = -1;
+	return 0;
     }
 
     return 0;
@@ -389,7 +391,7 @@ gint m_server(User *u, gint parc, gchar **parv)
 	u->mode = atoi(parv[2]);
 	strcpy(u->gcos, parv[3]);
 	
-	g_timeout_add(PING_FREQUENCY, (GSourceFunc) send_ping, NULL);
+	g_timeout_add(PING_FREQUENCY, (GSourceFunc) send_ping, u);
 
 	g_message("Linked with %s [%s], distant %d hop%s",
 		u->nick, u->gcos, u->mode, u->mode != 1 ? "s" : "");
