@@ -47,16 +47,54 @@
 #define ALLOCATED_NFDS	4
 
 void nego_start(void);
-static int start_net_thread(void);
-static int start_parse_thread(void);
-static int start_sig_thread(void);
+static void network_thread(void);
+static void parser_thread(void);
+static void signal_thread(void);
+static void master_thread(void);
+
+static void join_threads(void);
 static G_INLINE_FUNC void my_g_main_context_iteration(void);
 
-static GThread *net_thread, *parse_thread, *signal_thread;
+static GThread *network_thread_ptr, *parser_thread_ptr, *signal_thread_ptr;
 static GMainContext *ctx;
-static GAsyncQueue *sig_queue;
+static GAsyncQueue *sig_queue, *thread_queue;
 
 GLOBAL_RUN_DECLARE();
+
+void start_master_thread(void)
+{
+    g_thread_init(NULL);
+
+    setup_mutexes();
+    setup_netbuf();
+    setup_tables();
+		
+    log_set_irc_wrapper();
+
+    master_thread();
+}
+
+void join_threads(void)
+{
+    STOP_RUNNING();
+
+    g_cond_signal(me.readbuf_cond);
+    
+    g_thread_join(network_thread_ptr);
+    g_thread_join(parser_thread_ptr);
+
+    /*
+     * here we have only this thread running
+     */
+
+    while(me.send_tag && me.recv_tag)
+    {
+	my_g_main_context_iteration();
+    }
+
+    net_shutdown(me.handle);
+}
+
 void setup_mutexes(void)
 {
     me.tag_mutex = g_mutex_new();
@@ -70,30 +108,12 @@ void setup_mutexes(void)
     GLOBAL_RUN_INIT();
 }
 
-void spawn_threads(void)
+static void setup_signals(void)
 {
-    GError *err = NULL;
-
-    net_thread = g_thread_create_full((GThreadFunc)start_net_thread,
-	    NULL, 0, TRUE, TRUE, G_THREAD_PRIORITY_NORMAL, &err);
-    if(net_thread == NULL)
-    {
-	exit(-1);
-    }
-
-    parse_thread = g_thread_create_full((GThreadFunc)start_parse_thread,
-	    NULL, 0, TRUE, TRUE, G_THREAD_PRIORITY_NORMAL, &err);
-    if(parse_thread == NULL)
-    {
-	exit(-1);
-    }
-
-    signal_thread = g_thread_create_full((GThreadFunc)start_sig_thread,
-	    NULL, 0, FALSE, TRUE, G_THREAD_PRIORITY_LOW, &err);
-    if(signal_thread == NULL)
-    {
-	exit(-1);
-    }
+    sigset_t signal_set;
+    
+    sigfillset(&signal_set);
+    pthread_sigmask(SIG_BLOCK, &signal_set, NULL);
 }
 
 void wait_for_termination(void)
@@ -106,29 +126,6 @@ void wait_for_termination(void)
 	g_critical("Received signal %d (%s), quitting",
 		*received_signal, g_strsignal(*received_signal));
     }
-}
-
-void clean_exit(void)
-{
-    STOP_RUNNING();
-
-    g_cond_signal(me.readbuf_cond);
-    
-    g_thread_join(net_thread);
-    g_thread_join(parse_thread);
-
-    /*
-     * here we have only this thread running
-     */
-
-    while(me.send_tag && me.recv_tag)
-    {
-	my_g_main_context_iteration();
-    }
-
-    net_shutdown(me.handle);
-
-    exit(0);
 }
 
 G_INLINE_FUNC void my_g_main_context_iteration(void)
@@ -155,27 +152,66 @@ G_INLINE_FUNC void my_g_main_context_iteration(void)
     return;
 }
 
-static int start_net_thread(void)
+void master_thread(void)
+{
+    GError *err = NULL;
+    gpointer thr_id;
+
+    setup_signals();
+    thread_queue = g_async_queue_new();
+
+    signal_thread_ptr = g_thread_create_full((GThreadFunc)signal_thread,
+	    NULL, 0, FALSE, TRUE, G_THREAD_PRIORITY_LOW, &err);
+    if(signal_thread_ptr == NULL)
+    {
+	exit(EXIT_FAILURE);
+    }
+    thr_id = g_async_queue_pop(thread_queue);
+    g_message_syslog("Initialized signal thread, pid: %d", GPOINTER_TO_INT(thr_id));
+
+    network_thread_ptr = g_thread_create_full((GThreadFunc)network_thread,
+	    NULL, 0, TRUE, TRUE, G_THREAD_PRIORITY_NORMAL, &err);
+    if(network_thread_ptr == NULL)
+    {
+	exit(EXIT_FAILURE);
+    }
+    thr_id = g_async_queue_pop(thread_queue);
+    g_message_syslog("Initialized network thread, pid: %d", GPOINTER_TO_INT(thr_id));
+
+    parser_thread_ptr = g_thread_create_full((GThreadFunc)parser_thread,
+	    NULL, 0, TRUE, TRUE, G_THREAD_PRIORITY_NORMAL, &err);
+    if(parser_thread_ptr == NULL)
+    {
+	exit(EXIT_FAILURE);
+    }
+    thr_id = g_async_queue_pop(thread_queue);
+    g_message_syslog("Initialized parser/dispatcher thread, pid: %d", GPOINTER_TO_INT(thr_id));
+
+    g_async_queue_unref(thread_queue);
+
+    wait_for_termination();
+    join_threads();
+}
+
+static void network_thread(void)
 {
     THREAD_RUN_DECLARE();
 
     ctx = g_main_context_new();
     g_main_context_ref(ctx);
 
-    g_message_syslog("Services booting, pid: %d", getpid());
-
     time(&me.boot);
 
-    g_mutex_lock(me.tag_mutex);
     me.recv_tag = g_source_add(me.handle, G_IO_IN | G_IO_ERR | G_IO_HUP, 
 	    (GIOFunc) net_receive_callback);
     me.send_tag = g_source_add(me.handle, G_IO_OUT | G_IO_ERR,
 	    (GIOFunc) net_send_callback);
     me.err_tag = g_source_add(me.handle, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 	    (GIOFunc) net_err_callback);
-    g_mutex_unlock(me.tag_mutex);
 
     nego_start();
+
+    g_async_queue_push(thread_queue, GINT_TO_POINTER(getpid()));
  
     THREAD_RUN_CHECK();
 
@@ -187,17 +223,17 @@ static int start_net_thread(void)
     }
 
     g_thread_exit(NULL);
-
-    return 0;
 }
 
-static int start_parse_thread(void)
+static void parser_thread(void)
 {
     const gint STRINGS_PER_CYCLE = 2048;
     gchar **strings = g_new0(gchar *, STRINGS_PER_CYCLE);
     GString *read_data = g_string_sized_new(READBUFSZ);
     gint i, count;
     THREAD_RUN_DECLARE();
+
+    g_async_queue_push(thread_queue, GINT_TO_POINTER(getpid()));
 
     THREAD_RUN_CHECK();
 
@@ -206,7 +242,7 @@ static int start_parse_thread(void)
 	g_mutex_lock(me.readbuf_mutex);
 	if(!me.recvQ->len)
 	{
-	    g_thread_yield();
+	    /*g_thread_yield();*/
 	    g_cond_wait(me.readbuf_cond, me.readbuf_mutex);
 	}
 
@@ -245,17 +281,19 @@ static int start_parse_thread(void)
 
     g_thread_exit(NULL);
 
-    return 0;
 }
 
-static int start_sig_thread(void)
+static void signal_thread(void)
 {
     sigset_t signal_set;
     gint *sig = g_new0(gint, 1);
+    
+    sigfillset(&signal_set);
+
+    g_async_queue_push(thread_queue, GINT_TO_POINTER(getpid()));
 
     for(;;)
     {
-	sigfillset(&signal_set);
 	sigwait(&signal_set, sig);
 
 	switch(*sig)
@@ -285,9 +323,11 @@ static int start_sig_thread(void)
 	    default:
 		break;
 	}
+
+	sigaddset(&signal_set, *sig);
     }
 
-    return 0;
+    g_thread_exit(NULL);
 }
 
 G_INLINE_FUNC GSource *g_source_add(GIOChannel *handle, GIOCondition cond, GIOFunc callback)
@@ -323,7 +363,6 @@ G_INLINE_FUNC void g_source_del(GSource *gs)
     g_source_destroy(gs);
     g_source_unref(gs);
 }
-
 
 void push_signal(gint *signum)
 {
