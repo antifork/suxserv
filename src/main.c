@@ -16,6 +16,12 @@ gint main(gint argc, gchar **argv)
 {
     GMainLoop *main_loop;
 
+    if(!GLIB_CHECK_VERSION(3, 0, 0))
+    {
+	g_critical("GLib version 2.0.0 or above is required");
+	exit(EXIT_FAILURE);
+    }
+
     strcpy(me.name, SUX_SERV_NAME);
     strcpy(me.pass, SUX_PASS);
     strcpy(me.info, SUX_VERSION);

@@ -72,7 +72,7 @@ void __sux_tty_log_handler_critical_errno(const gchar *log_domain, GLogLevelFlag
 {
     G_CONST_RETURN gchar *errstr = g_strerror(errno);
 
-    g_fprintf(stderr, "[%s] Critical: %s (%s)\n", log_domain, message, errstr);
+    g_fprintf(stderr, "(process %d) [%s] Critical **: %s (%s)\n", getpid(), log_domain, message, errstr);
     exit(-1);
 }
 
@@ -101,7 +101,7 @@ void __sux_tty_log_handler_generic(const gchar *log_domain, GLogLevelFlags log_l
     else
 	err_type = "Unknown";
 
-    g_fprintf(stderr, "[%s] %s: %s\n", log_domain, err_type, message);
+    g_fprintf(stderr, "(process %d) [%s] %s **: %s\n", getpid(), log_domain, err_type, message);
 
     if(log_level & G_LOG_LEVEL_CRITICAL)
     {

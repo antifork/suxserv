@@ -12,6 +12,6 @@ gchar *net_receive(GIOChannel *, gsize *);
 gboolean net_flush(GIOChannel *);
 gboolean net_shutdown(GIOChannel *);
 
-void send_out(gchar *, ...);
+void send_out(gchar *, ...) G_GNUC_PRINTF(1, 2);
 
 #endif
