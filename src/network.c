@@ -25,10 +25,10 @@ GIOChannel *connect_server(gchar *host, guint port)
     sock.sin_port = port;
     sock.sin_family = AF_INET;
 
-    fprintf(stdout, "connecting to %s ... ", inet_ntop(AF_INET,
+    warn("connecting to %s ... ", inet_ntop(AF_INET,
 		(const void *) &sock.sin_addr, hostbuf, HOSTLEN-1));
 
-    fflush(stdout);
+    fflush(stderr);
 
     if((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	fatal("socket()");
@@ -51,7 +51,7 @@ GIOChannel *connect_server(gchar *host, guint port)
     else if(fcntl(fd, F_SETFL, nb | O_NONBLOCK) < 0)
 	fatal("fcntl(%d, F_SETFL, nb | O_NONBLOCK)", fd);
 
-    printf(" connected.\n");
+    warn(" connected.\n");
 
     if((ret = g_io_channel_unix_new(fd)))
     {

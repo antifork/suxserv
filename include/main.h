@@ -28,6 +28,7 @@ typedef struct mydata
 
 EXTERN MyData me;
 EXTERN void (*fatal)(char *fmt, ...);
+EXTERN void (*warn)(char *fmt, ...);
 
 #undef EXTERN
 #endif

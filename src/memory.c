@@ -3,6 +3,7 @@
 
 #include "sux.h"
 #include "memory.h"
+#include "main.h"
 
 /*******************************************************\
  * SEGMENT FUNCTIONS
@@ -109,23 +110,23 @@ static void realloc_segment (SEG_T *seg)
 	newseg.bitmapsize = newseg.numpages >> 3;
 	newseg.__firstfree = seg->numpages;
 #ifdef DEBUG
-	printf("realloc(%p->%p, %d) -> ", seg->__data, seg->__data + seg->datasize, newseg.datasize);
+	warn("realloc(%p->%p, %d) -> ", seg->__data, seg->__data + seg->datasize, newseg.datasize);
 #endif	
 	newseg.__data = g_realloc(seg->__data, newseg.datasize);
 	memset(newseg.__data + seg->datasize, 0x0, newseg.datasize - seg->datasize);
 	offset = (off_t)(newseg.__data - seg->__data);
 
 #ifdef DEBUG
-	printf("%p -> %p\n", newseg.__data, newseg.__data + newseg.datasize);
-	printf("realloc(%p, %d) -> ", seg->__bitmap, newseg.bitmapsize);
+	warn("%p -> %p\n", newseg.__data, newseg.__data + newseg.datasize);
+	warn("realloc(%p, %d) -> ", seg->__bitmap, newseg.bitmapsize);
 #endif
 	newseg.__bitmap = g_realloc((void*)seg->__bitmap, newseg.bitmapsize);
 	memset(newseg.__bitmap + seg->bitmapsize, 0x0, newseg.bitmapsize - seg->bitmapsize);
 
 #ifdef DEBUG
-	printf("%p\n", newseg.__bitmap);
-	printf("realloc data %d to %d, off_t: %ld\n", seg->datasize, newseg.datasize, offset);
-	printf("realloc bitmap %d to %d, off_t: %d\n", seg->bitmapsize, newseg.bitmapsize, 
+	warn("%p\n", newseg.__bitmap);
+	warn("realloc data %d to %d, off_t: %ld\n", seg->datasize, newseg.datasize, offset);
+	warn("realloc bitmap %d to %d, off_t: %d\n", seg->bitmapsize, newseg.bitmapsize, 
 			((void*)seg->__bitmap) - ((void*)newseg.__bitmap));
 #endif
 	seg->numpages = newseg.numpages;
@@ -191,7 +192,7 @@ void *SG_malloc(SEG_T *seg)
 
 	if(ret < start || ret > end)
 	{
-	    fprintf(stderr, "SG_malloc found an OOB pointer ... and tried to return it.");
+	    warn("SG_malloc found an OOB pointer ... and tried to return it.");
 	    raise(SIGSEGV);
 	}
 #endif

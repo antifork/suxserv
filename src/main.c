@@ -12,6 +12,8 @@ extern gint errno;
 static void exit_func(gint);
 static void stderr_fatal(char *, ...);
 static void syslog_fatal(char *, ...);
+static void stderr_warn(char *, ...);
+static void syslog_warn(char *, ...);
 static void syslog_init(void);
 
 gint main(gint argc, gchar **argv)
@@ -31,6 +33,7 @@ gint main(gint argc, gchar **argv)
     signal(SIGTERM, exit_func);
 
     fatal = stderr_fatal;
+    warn = stderr_warn;
     
     if((me.handle = connect_server(me.host, me.port)))
     {
@@ -44,6 +47,7 @@ gint main(gint argc, gchar **argv)
 		tables_init();
 		
 		fatal = syslog_fatal;
+		warn = syslog_warn;
 		
 		main_loop = g_main_loop_new(NULL, TRUE);
 
@@ -73,7 +77,7 @@ gint main(gint argc, gchar **argv)
 
 	    default:
 		/* father */
-		fprintf(stderr, "services are daemonizing [pid \1%d\1]\n", pid);
+		warn("services are daemonizing [pid \1%d\1]\n", pid);
 		
 		exit(EXIT_SUCCESS);
 
@@ -115,6 +119,27 @@ static void syslog_fatal(gchar *fmt, ...)
     closelog();
 
     exit(EXIT_FAILURE);
+}
+
+static void stderr_warn(gchar *fmt, ...)
+{
+    va_list ap;
+
+    va_start (ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+}
+
+static void syslog_warn(gchar *fmt, ...)
+{
+    va_list ap;
+    gchar msgbuf[BUFSIZ];
+
+    va_start(ap, fmt);
+    vsnprintf(msgbuf, sizeof(msgbuf), fmt, ap);
+    va_end(ap);
+
+    syslog(LOG_NOTICE, "%s", msgbuf);
 }
 
 #ifdef G_CAN_INLINE

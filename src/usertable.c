@@ -13,7 +13,7 @@
  * #define HASH(sta, end, hash)  while(end != sta) { hash = ((hash * 16777619UL) ^ (*end--)) }
  */
 #define HASHSIZE	1021
-#define MEM_CHUNK	256
+#define MEM_CHUNK	512
 #define FNV_prime	16777619UL
 typedef unsigned long hash_t;
 #ifdef G_CAN_INLINE
@@ -144,25 +144,24 @@ static gint usertable_offupd(TABLE_T *d, off_t offset)
 #ifdef DEBUG
 	    if((void*)p->next < start || (void*)p->next > end)
 	    {
-		fprintf(stderr, "usertable_offupd created an OOB pointer ...");
-		raise(SIGSEGV);
+		fatal("usertable_offupd created an OOB pointer ...");
 	    }
 #endif
 	    p = p->next;
 	}
     }
 #if 0
-    printf("data [%p <-> %p]\n", start, end);
+    warn("data [%p <-> %p]\n", start, end);
     for(i = 0; i < HASHSIZE; i++)
     {
-	printf("t[%d] =>", i);
+	warn("t[%d] =>", i);
 	for(p = t[i]; p; p = p->next)
 	{
-	    printf(" %p", p);
+	    warn(" %p", p);
 	    if((void*)p < start || (void*)p > end)
-		printf(" \033[1;31mOOB !!!!\033[0m");
+		warn(" \033[1;31mOOB !!!!\033[0m");
 	}
-	printf("\n");
+	warn("\n");
     }
 #endif
     return 1;
