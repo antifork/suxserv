@@ -63,7 +63,7 @@ gint parse(gchar *buffer)
     gchar *ch, *s;
     gint i, len = 0;
     struct Message *mptr;
-    User *u = NULL;
+    User *u = me.uplink;
 
     /* g_fprintf(stderr, "<: %s\n", buffer); */
     s = sender;
@@ -71,7 +71,7 @@ gint parse(gchar *buffer)
     
     for (ch = buffer; *ch == ' '; ch++);	/* skip spaces */
     
-    para[0] = me.uplink;
+    para[0] = G_LIKELY(u) ? u->nick : NULL;
     if (*ch == ':') 
     {
 	/*
@@ -96,8 +96,7 @@ gint parse(gchar *buffer)
 	 * all --msa  (": NOTICE nick ...")
 	 */
 	
-	/* for now, do this only for clients */
-	if (*sender && !strchr(sender, '.'))
+	if (*sender)
 	{
 	    u = _TBL(user).get(sender);
 
