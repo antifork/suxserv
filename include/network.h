@@ -57,7 +57,6 @@ void send_out(gchar *, ...) G_GNUC_PRINTF(1, 2);
 
 GSource *g_source_add(GIOChannel *, GIOCondition, GIOFunc);
 GSource *g_timeout_source_add(guint, GSourceFunc, gpointer);
-gboolean g_source_del(GSource **);
-gboolean g_source_del_nolock(GSource **);
+void g_source_del(GSource *);
 
 #endif
