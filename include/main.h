@@ -70,7 +70,7 @@ typedef struct mydata
 
     GThread *net_thr, *parse_thr, *sig_thr;
 
-    GMutex *tag_mutex, *time_mutex;
+    GMutex *ctx_mutex;//, *time_mutex;
     GCond *ctx_cond;
     GPollFD fds[4];
     GMainContext *ctx;
