@@ -14,6 +14,9 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/*
+ * stolen from bahamut/src/s_err.c
+ */
 #include "sux.h"
 #include "numeric.h"
 

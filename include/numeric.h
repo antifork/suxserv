@@ -18,8 +18,6 @@
  *
  */
 
-/* $Id$ */
-
 #ifndef __numeric_h__
 #define __numeric_h__
 
