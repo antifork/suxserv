@@ -5,7 +5,6 @@
 
 extern gint  m_private(User *, gint, gchar **);
 extern gint  m_topic(User *, gint, gchar **);
-extern gint  m_join(User *, gint, gchar **);
 extern gint  m_part(User *, gint, gchar **);
 extern gint  m_mode(User *, gint, gchar **);
 extern gint  m_ping(User *, gint, gchar **);
@@ -15,14 +14,12 @@ extern gint  m_nick(User *, gint, gchar **);
 extern gint  m_error(User *, gint, gchar **);
 extern gint  m_notice(User *, gint, gchar **);
 extern gint  m_quit(User *, gint, gchar **);
-extern gint  m_kill(User *, gint, gchar **);
 extern gint  m_server(User *, gint, gchar **);
 extern gint  m_info(User *, gint, gchar **);
 extern gint  m_stats(User *, gint, gchar **);
 extern gint  m_version(User *, gint, gchar **);
 extern gint  m_squit(User *, gint, gchar **);
 extern gint  m_pass(User *, gint, gchar **);
-extern gint  m_umode(User *, gint, gchar **);
 extern gint  m_motd(User *, gint, gchar **);
 extern gint  m_svinfo(User *, gint, gchar **);
 extern gint  m_sjoin(User *, gint, gchar **);

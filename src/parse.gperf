@@ -22,9 +22,7 @@ CAPAB, m_capab, 0
 ERROR, m_error, 0
 GNOTICE, m_gnotice, 0
 INFO, m_info, 0
-JOIN, m_join, 0
 KICK, m_kick, 0
-KILL, m_kill, 0
 MODE, m_mode, 0
 NICK, m_nick, 0
 MOTD, m_motd, 0
