@@ -6,37 +6,37 @@
 
 #define DUMMY return 0;
 
-int m_private(int parc, char **parv)
+gint m_private(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_topic(int parc, char **parv)
+gint m_topic(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_join(int parc, char **parv)
+gint m_join(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_part(int parc, char **parv)
+gint m_part(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_mode(int parc, char **parv)
+gint m_mode(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_ping(int parc, char **parv)
+gint m_ping(gint parc, gchar **parv)
 {
     send_out(":%s PONG :%s",
 	    me.name, parv[1]);
     return 1;
 }
-int m_pong(int parc, char **parv)
+gint m_pong(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_kick(int parc, char **parv)
+gint m_kick(gint parc, gchar **parv)
 {
     DUMMY
 }
@@ -59,7 +59,7 @@ int m_kick(int parc, char **parv)
  * parv[9] = ircname
  * -- endif
  */
-int m_nick(int parc, char **parv)
+gint m_nick(gint parc, gchar **parv)
 {
     if(parc > 3)
     {
@@ -101,14 +101,14 @@ int m_nick(int parc, char **parv)
     }
 }
 
-int m_error(int parc, char **parv)
+gint m_error(gint parc, gchar **parv)
 {
-    extern void fatal(char *, ...);
+    extern void fatal(gchar *, ...);
     errno = 0;
     fatal(parv[1]);
     return 0;
 }
-int m_notice(int parc, char **parv)
+gint m_notice(gint parc, gchar **parv)
 {
     DUMMY
 }
@@ -118,19 +118,19 @@ int m_notice(int parc, char **parv)
  * parv[0] = sender prefix
  * parv[1] = comment
  */
-int m_quit(int parc, char **parv)
+gint m_quit(gint parc, gchar **parv)
 {
     usertable.del(&usertable, parv[0]);
     return 1;
 }
-int m_kill(int parc, char **parv)
+gint m_kill(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_motd(int parc, char **parv)
+gint m_motd(gint parc, gchar **parv)
 {
-    int i;
-    char *motd[] = 
+    gint i;
+    gchar *motd[] = 
     {
 	"MOTD: Sux Services ver 0.01.",
 	"This is the default MOTD.",
@@ -149,14 +149,14 @@ int m_motd(int parc, char **parv)
     send_out(rpl_str(RPL_ENDOFMOTD), me.name, parv[0]);
     return 0;
 }
-int m_server(int parc, char **parv)
+gint m_server(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_info(int parc, char **parv)
+gint m_info(gint parc, gchar **parv)
 {
-    int i;
-    char *info[] = 
+    gint i;
+    gchar *info[] = 
     {
 	"INFO: Sux Services ver 0.01.",
 	"Coded and recoded by a nice coder =).",
@@ -174,83 +174,83 @@ int m_info(int parc, char **parv)
     send_out(rpl_str(RPL_ENDOFINFO), me.name, parv[0]);
     return 0;
 }
-int m_stats(int parc, char **parv)
+gint m_stats(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_version(int parc, char **parv)
+gint m_version(gint parc, gchar **parv)
 {
     send_out(rpl_str(RPL_VERSION),
 	    me.name, parv[0], me.info);
     return 0;
 }
-int m_squit(int parc, char **parv)
+gint m_squit(gint parc, gchar **parv)
 {
     fprintf(stderr, "received SQUIT for %s [%s] (PORCODIO)\n",
 	    parv[1], parv[2]);
     return 0;
 }
-int m_pass(int parc, char **parv)
+gint m_pass(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_umode(int parc, char **parv)
+gint m_umode(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_svinfo(int parc, char **parv)
+gint m_svinfo(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_sjoin(int parc, char **parv)
+gint m_sjoin(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_capab(int parc, char **parv)
+gint m_capab(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_burst(int parc, char **parv)
+gint m_burst(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_away(int parc, char **parv)
+gint m_away(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_nickcoll(int parc, char **parv)
+gint m_nickcoll(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_cs(int parc, char **parv)
+gint m_cs(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_ns(int parc, char **parv)
+gint m_ns(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_ms(int parc, char **parv)
+gint m_ms(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_os(int parc, char **parv)
+gint m_os(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_rs(int parc, char **parv)
+gint m_rs(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_time(int parc, char **parv)
+gint m_time(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_admin(int parc, char **parv)
+gint m_admin(gint parc, gchar **parv)
 {
     DUMMY
 }
-int m_gnotice(int parc, char **parv)
+gint m_gnotice(gint parc, gchar **parv)
 {
     DUMMY
 }
