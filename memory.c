@@ -11,7 +11,7 @@
 /* leet awgn`s algorythm to find the first zero bit in
  * an integer
  */
-static int fz[] =
+static gint fz[] =
     { 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4,
 	  0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 5,
 	  0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4,
@@ -30,11 +30,11 @@ static int fz[] =
 	  0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 8
 };
 
-static int
-get_fz (int i)
+static gint
+get_fz (gint i)
 {
-    int ret = 0;
-    int cnt;
+    gint ret = 0;
+    gint cnt;
 
     /* optimize .. if we pass a -1, return it instead of cycling.. also because
      * the algorithm returns 0 when the first bit is 0 and when the bits are all
@@ -56,7 +56,7 @@ get_fz (int i)
 /* 
  * predefined error function
  */
-static void SG_err_func_predef(char *fmt, ...)
+static void SG_err_func_predef(gchar *fmt, ...)
 {
 	va_list ap;
 	va_start (ap, fmt);
@@ -70,58 +70,20 @@ static void SG_err_func_predef(char *fmt, ...)
 }
 
 /*
- * non-optimized malloc that zero
- * the allocated memory and exit()s
- * in case of failure.
- */
-void *xmalloc(size_t x)
-{
-    void *r = malloc(x);
-    if(r == NULL)
-    {
-	/* bad .. */
-	SG_err_func_predef("malloc(%d): %s", x, strerror(errno)); 
-	return NULL;
-    }
-    memset(r, 0, x);
-    return r;
-}
-
-/*
- * non-optimized realloc that zero
- * the newly allocated memory and
- * exit()s in case of failure.
- */
-void *xrealloc(void *ptr, size_t origsz, size_t newsz)
-{
-    void *r = realloc(ptr, newsz);
-
-    if(r == NULL)
-    {
-	SG_err_func_predef("realloc(%p, %d -> %d): %s\n",
-		ptr, origsz, newsz, strerror(errno));
-	return NULL;
-    }
-
-    memset(r + origsz, 0x0, newsz - origsz);
-    return r;
-}
-
-/*
  * setup function for the memory segment
  */
 SEG_T *SG_setup(size_t pagesize, size_t numpages, TABLE_T *table)
 {
-	SEG_T *ret = xmalloc(sizeof(SEG_T));
+	SEG_T *ret = g_new0(SEG_T, 1);
 	
 	ret->pagesize = pagesize;
 	ret->numpages = numpages;
 	ret->datasize = pagesize * numpages;
 	ret->bitmapsize = numpages >> 3; /* bitmap byte size */
 	ret->__firstfree = 0L;
-	ret->__bitmap = (bitmap_t*)xmalloc(ret->bitmapsize);
+	ret->__bitmap = (bitmap_t*)g_malloc0(ret->bitmapsize);
 	ret->__table = table;
-	ret->__data = xmalloc(ret->datasize);
+	ret->__data = g_malloc0(ret->datasize);
 	ret->errfunc = SG_err_func_predef;
 
 	return ret;
@@ -146,14 +108,16 @@ static void realloc_segment (SEG_T *seg)
 #ifdef DEBUG
 	printf("realloc(%p->%p, %d) -> ", seg->__data, seg->__data + seg->datasize, newseg.datasize);
 #endif	
-	newseg.__data = xrealloc(seg->__data, seg->datasize, newseg.datasize);
+	newseg.__data = g_realloc(seg->__data, newseg.datasize);
+	memset(newseg.__data + seg->datasize, 0x0, newseg.datasize - seg->datasize);
 	offset = (off_t)(newseg.__data - seg->__data);
 
 #ifdef DEBUG
 	printf("%p -> %p\n", newseg.__data, newseg.__data + newseg.datasize);
 	printf("realloc(%p, %d) -> ", seg->__bitmap, newseg.bitmapsize);
 #endif
-	newseg.__bitmap = xrealloc((void*)seg->__bitmap, seg->bitmapsize, newseg.bitmapsize);
+	newseg.__bitmap = g_realloc((void*)seg->__bitmap, newseg.bitmapsize);
+	memset(newseg.__bitmap + seg->bitmapsize, 0x0, newseg.bitmapsize - seg->bitmapsize);
 
 #ifdef DEBUG
 	printf("%p\n", newseg.__bitmap);
@@ -181,7 +145,7 @@ void *SG_malloc(SEG_T *seg)
 	void *ret;
 	bitmap_t *pagefinder,
 	         *bitmapend = (void*)seg->__bitmap + seg->bitmapsize;
-	int fz;
+	gint fz;
 #ifdef DEBUG
 	void *start, *end;
 #endif
@@ -236,7 +200,7 @@ void *SG_malloc(SEG_T *seg)
  */
 void SG_free(void *p, SEG_T *seg)
 {
-	int pagenum;
+	gint pagenum;
 	bitmap_t *b;
 	/* first, consistancy checks. */
 
@@ -288,7 +252,7 @@ void SG_free(void *p, SEG_T *seg)
  * pointer into the SEG struct..
  */
 /* XXX: maybe put this function into SG_setup ?? */
-__inline void SG_set_err_func(void (*errfunc)(char *, ...), SEG_T *seg)
+__inline void SG_set_err_func(void (*errfunc)(gchar *, ...), SEG_T *seg)
 {
 	seg->errfunc = errfunc;
 	return;

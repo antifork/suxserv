@@ -140,7 +140,6 @@ struct SEG
 
 SEG_T *SG_setup(size_t, size_t, TABLE_T *);
 void *SG_malloc(SEG_T *seg);
-void *xmalloc(size_t);
 void SG_free(void *p, SEG_T *seg);
 void SG_set_err_func(void (*)(char *, ...), SEG_T *seg);
 void SG_destroy(SEG_T *seg);
