@@ -441,7 +441,7 @@ static gboolean compile_mode(Mode *m, gchar *s, gint parc, gchar **parv)
 		m->mode |= MODE_NONICKCHG;
 		break;
 	    case 'k':
-		strncpy(m->key, parv[4 + args], KEYLEN + 1);
+		g_strlcpy(m->key, parv[4 + args], KEYLEN + 1);
 		args++;
 		if (parc < 5 + args)
 		    return FALSE;

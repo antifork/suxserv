@@ -10,14 +10,7 @@
 extern gint errno;
 
 static void signal_handler(gint);
-
-static void setup_signals(void)
-{
-    signal(SIGINT, signal_handler);
-    signal(SIGHUP, signal_handler);
-    signal(SIGQUIT, signal_handler);
-    signal(SIGTERM, signal_handler);
-}
+static void setup_signals(void);
 
 gint main(gint argc, gchar **argv)
 {
@@ -114,6 +107,15 @@ gint main(gint argc, gchar **argv)
 
 static void signal_handler(gint sig)
 {
-    g_critical("Received signal %d, quitting", sig);
-    g_critical_syslog("Received signal %d, quitting", sig);
+    g_critical("Received signal %d (%s), quitting", sig, g_strsignal(sig));
+    g_critical_syslog("Received signal %d (%s), quitting", sig, g_strsignal(sig));
 }
+
+static void setup_signals(void)
+{
+    signal(SIGINT, signal_handler);
+    signal(SIGHUP, signal_handler);
+    signal(SIGQUIT, signal_handler);
+    signal(SIGTERM, signal_handler);
+}
+

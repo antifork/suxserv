@@ -2,6 +2,7 @@
 #define __sux_h__
 
 #include <glib.h>
+#include <glib/gprintf.h>
 #include "os.h"
 #include "table.h"
 

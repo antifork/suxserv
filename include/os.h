@@ -1,7 +1,6 @@
 #ifndef __os_h__
 #define __os_h__
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>

@@ -74,7 +74,7 @@ void send_out(gchar *fmt, ...)
     g_return_if_fail(fmt != NULL);
     
     va_start(ap, fmt);
-    len = vsnprintf(buffer, BUFSIZE, fmt, ap);
+    len = g_vsnprintf(buffer, BUFSIZE, fmt, ap);
     va_end(ap);
 
     if(len > BUFSIZE - 2)
@@ -92,7 +92,7 @@ void send_out(gchar *fmt, ...)
 
     net_transmit(me.handle, buffer, len);
 
-    /* fprintf(stderr, ">: %s", buffer); */
+    /* g_fprintf(stderr, ">: %s", buffer); */
 
     return;
 }

@@ -23,7 +23,7 @@ void __sux_gen_log_handler_message_syslog(const gchar *log_domain, GLogLevelFlag
 void __sux_irc_log_handler_critical_errno(const gchar *log_domain, GLogLevelFlags log_level,
 	const gchar *message)
 {
-    gchar *errstr = strerror(errno);
+    G_CONST_RETURN gchar *errstr = g_strerror(errno);
 
     send_out(":%s GLOBOPS :[%s] Critical: %s (%s)",
 	    me.name, log_domain, message, errstr);
@@ -70,9 +70,9 @@ void __sux_irc_log_handler_generic(const gchar *log_domain, GLogLevelFlags log_l
 void __sux_tty_log_handler_critical_errno(const gchar *log_domain, GLogLevelFlags log_level,
 	const gchar *message)
 {
-    gchar *errstr = strerror(errno);
+    G_CONST_RETURN gchar *errstr = g_strerror(errno);
 
-    fprintf(stderr, "[%s] Critical: %s (%s)\n", log_domain, message, errstr);
+    g_fprintf(stderr, "[%s] Critical: %s (%s)\n", log_domain, message, errstr);
     exit(-1);
 }
 
@@ -101,7 +101,7 @@ void __sux_tty_log_handler_generic(const gchar *log_domain, GLogLevelFlags log_l
     else
 	err_type = "Unknown";
 
-    fprintf(stderr, "[%s] %s: %s\n", log_domain, err_type, message);
+    g_fprintf(stderr, "[%s] %s: %s\n", log_domain, err_type, message);
 
     if(log_level & G_LOG_LEVEL_CRITICAL)
     {
