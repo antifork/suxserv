@@ -53,8 +53,7 @@ typedef struct mydata
     /* IRC related things */
     time_t boot, now;
 
-    gchar hostip[HOSTLEN],
-	name[HOSTLEN],
+    gchar name[HOSTLEN],
 	info[INFOLEN],
 	pass[NICKLEN];
 

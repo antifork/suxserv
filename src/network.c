@@ -51,6 +51,9 @@ GIOChannel *connect_server(gchar *host, guint port)
     socklen_t namelen = sizeof(my_addr);
     GIOChannel *ret;
 
+    gchar hostip[16]; /* abc.def.ghi.jkl0
+    			 1234567890123456*/
+
     g_return_val_if_fail(host != NULL, NULL);
     g_return_val_if_fail(port > 0, NULL);
 
@@ -65,9 +68,9 @@ GIOChannel *connect_server(gchar *host, guint port)
     sock.sin_port = htons(port);
     sock.sin_family = AF_INET;
 
-    inet_ntop(AF_INET, (const void *) &sock.sin_addr, me.hostip, HOSTLEN - 1);
+    inet_ntop(AF_INET, (const void *) &sock.sin_addr, hostip, sizeof(hostip));
 
-    g_message_syslog("Connecting to %s[%s] ... ", host, me.hostip);
+    g_message_syslog("Connecting to %s[%s] ... ", host, hostip);
 
     if((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	g_errno_critical("socket()");

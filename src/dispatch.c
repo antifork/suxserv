@@ -635,8 +635,8 @@ gint m_server(User *u, gint parc, gchar **parv)
 
 	uplink.firsttime = NOW;
 
-	send_out(":%s GNOTICE :Link with %s[unknown@%s] established, states: TS",
-		me.name, u->name, me.hostip);
+	send_out(":%s GNOTICE :Link with %s[unknown@0.0.0.0] established, states: TS",
+		me.name, u->name);
 	send_out("BURST");
 
 	send_nick_burst();
