@@ -57,6 +57,7 @@ gint m_topic(gint parc, gchar **parv)
 
     return 1;
 }
+
 gint m_join(gint parc, gchar **parv)
 {
     DUMMY
@@ -79,6 +80,7 @@ gint m_kick(gint parc, gchar **parv)
 {
     DUMMY
 }
+
 /*
  * m_nick
  * parv[0] = sender prefix
@@ -105,6 +107,13 @@ gint m_nick(gint parc, gchar **parv)
     if(parc > 3)
     {
 	/* new user. */
+	if((u = _TBL(user).get(parv[1])))
+	{
+	    /* uh ? we already have this ? */
+	    g_warning("new user %s already exists in hash table ..",
+		    parv[1]);
+	    return 0;
+	}
 
 	u = _TBL(user).alloc(parv[1]);
 
@@ -140,12 +149,18 @@ gint m_nick(gint parc, gchar **parv)
     }
 }
 
+/*
+ * m_error
+ * parv[0] = sender prefix
+ * parv[1] = message
+ */
 gint m_error(gint parc, gchar **parv)
 {
     g_critical_syslog("%s", parv[1]);
 
     return 0;
 }
+
 gint m_notice(gint parc, gchar **parv)
 {
     DUMMY
@@ -156,6 +171,7 @@ gint m_notice(gint parc, gchar **parv)
  * parv[0] = sender prefix
  * parv[1] = comment
  */
+
 gint m_quit(gint parc, gchar **parv)
 {
     User *u = _TBL(user).get(parv[0]);
@@ -164,14 +180,18 @@ gint m_quit(gint parc, gchar **parv)
 
     g_return_val_if_fail(u != NULL, 0);
 
-    for(johnny = u->channels; johnny; johnny = g_slist_next(u->channels))
+    for(johnny = u->channels; johnny; johnny = g_slist_next(johnny))
     {
 	GSList *jimmy; /* the second walker */
 	c = _TBL(channel).get(((SLink *)johnny->data)->value.c->chname);
+
+	g_return_val_if_fail(c != NULL, 0);
 		
-	/* XXX wtf does this not work ?? */
-	for(jimmy = c->members; jimmy; jimmy = g_slist_next(c->members))
+	for(jimmy = c->members; jimmy; jimmy = g_slist_next(jimmy))
 	{
+	    g_return_val_if_fail(jimmy->data != NULL, 0);
+	    g_return_val_if_fail(((ChanMember*)jimmy->data)->u != NULL, 0);
+	    
 	    if(((ChanMember*)jimmy->data)->u == u)
 	    {
 		/* remove this link */
@@ -184,7 +204,7 @@ gint m_quit(gint parc, gchar **parv)
 	}
     }
 
-    for(johnny = u->channels; johnny; johnny = g_slist_next(u->channels))
+    for(johnny = u->channels; johnny; johnny = g_slist_next(johnny))
     {
 	g_mem_chunk_free(_MPL(links), johnny->data);
     }
@@ -220,7 +240,7 @@ gint m_part(gint parc, gchar **parv)
     u = _TBL(user).get(pfx);
     g_return_val_if_fail(u != NULL, 0);
     
-    for(johnny = c->members; johnny; johnny = g_slist_next(c->members))
+    for(johnny = c->members; johnny; johnny = g_slist_next(johnny))
     {
 	if(((ChanMember*)johnny->data)->u == u)
 	{
@@ -438,21 +458,21 @@ static gboolean compile_mode(Mode *m, gchar *s, gint parc, gchar **parv)
 static void add_user_to_channel(User *u, Channel *c, guint flags)
 {
     ChanMember *cm = g_mem_chunk_alloc0(_MPL(cmembers));
+    SLink *lp;
 
     g_return_if_fail(c != NULL);
     g_return_if_fail(u != NULL);
     g_return_if_fail(cm != NULL);
+
+    g_return_if_fail(g_slist_find_custom(u->channels, c->chname, (GCompareFunc) ch_compare) == NULL);
     
     cm->u = u;
     cm->flags = flags;
 
-    if(!g_slist_find_custom(u->channels, c->chname, (GCompareFunc) ch_compare))
-    {
-	SLink *lp = g_mem_chunk_alloc0(_MPL(links));
-	lp->value.c = c;
-	u->channels = g_slist_prepend(u->channels, lp);
-    }	
-    
+    lp = g_mem_chunk_alloc0(_MPL(links));
+    lp->value.c = c;
+
+    u->channels = g_slist_prepend(u->channels, lp);
     c->members = g_slist_prepend(c->members, cm);
 }
 
