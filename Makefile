@@ -23,7 +23,7 @@ $(ME): src/$(ME)
 	@echo "********************************";
 	@ls -l $(ME);
 clean:
-	$(RM) -f $(ME) core $(ME).core;
+	$(RM) -f $(ME) core $(ME).core a.out;
 	@for dir in $(SUBDIRS); do \
 		echo "Cleaning $$dir"; \
 		cd $$dir; \
