@@ -95,9 +95,9 @@ void nego_start(void)
 {
     send_out("PASS %s :TS", me.pass);
     send_out("CAPAB BURST NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
-    g_mutex_lock(me.time_mutex);
+//    g_mutex_lock(me.time_mutex);
     send_out("SVINFO 5 3 0 :%lu", NOW);
-    g_mutex_unlock(me.time_mutex);
+//    g_mutex_unlock(me.time_mutex);
     send_out("SERVER %s 1 :%s", me.name, me.info);
 
     uplink.ping_tag = g_timeout_source_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
@@ -187,8 +187,8 @@ gint m_pong(User *u, gint parc, gchar **parv)
 
     if(uplink.ping_tag)
     {
-	g_source_del(uplink.ping_tag);
-	uplink.ping_tag = NULL;
+	g_source_del(&uplink.ping_tag);
+//	uplink.ping_tag = NULL;
 	return 0;
     }
 
@@ -529,15 +529,15 @@ gint m_server(User *u, gint parc, gchar **parv)
 	
 	if(uplink.ping_tag)
 	{
-	    g_source_del(uplink.ping_tag);
-	    uplink.ping_tag = NULL;
+	    g_source_del(&uplink.ping_tag);
+//	    uplink.ping_tag = NULL;
 	}
 
 	g_timeout_source_add(PING_FREQUENCY, (GSourceFunc) send_ping, u);
 
-	g_mutex_lock(me.time_mutex);
+//	g_mutex_lock(me.time_mutex);
 	uplink.firsttime = NOW;
-	g_mutex_unlock(me.time_mutex);
+//	g_mutex_unlock(me.time_mutex);
 
 	send_out(":%s GNOTICE :Link with %s[%s] established, states: TS",
 		me.name, u->nick, SUX_UPLINK_HOST);
@@ -621,9 +621,9 @@ gint m_stats(User *u, gint parc, gchar **parv)
 	    {
 		time_t now;
 		
-		g_mutex_lock(me.time_mutex);
+//		g_mutex_lock(me.time_mutex);
 		now = NOW - me.boot;
-		g_mutex_unlock(me.time_mutex);
+//		g_mutex_unlock(me.time_mutex);
 
 		send_out(rpl_str(RPL_STATSUPTIME), me.name, parv[0],
 			now / 86400, (now / 3600) % 24, (now / 60) % 60, now % 60);
@@ -692,17 +692,15 @@ gint m_svinfo(User *u, gint parc, gchar **parv)
     time_t deltat, theirtime, now;
     guint their_ts_ver, their_ts_min_ver;
 
-    g_mutex_lock(me.time_mutex);
+//    g_mutex_lock(me.time_mutex);
     now = NOW;
-    g_mutex_unlock(me.time_mutex);
+//    g_mutex_unlock(me.time_mutex);
 
     g_return_val_if_fail(parc > 4, -1);
 
     theirtime = atol(parv[4]);
 
-    g_mutex_lock(me.time_mutex);
     deltat = ABS(theirtime - now);
-    g_mutex_unlock(me.time_mutex);
 
     if(deltat > 45)
     {
@@ -1036,9 +1034,9 @@ gint m_burst(User *u, gint parc, gchar **parv)
 	/* this is an EOB */
 	time_t synch_time;
 	
-	g_mutex_lock(me.time_mutex);
+//	g_mutex_lock(me.time_mutex);
 	synch_time = NOW - uplink.firsttime;
-	g_mutex_unlock(me.time_mutex);
+//	g_mutex_unlock(me.time_mutex);
 
 	uplink.flags &= ~FLAGS_EOBRECV;
 	if(uplink.flags & (FLAGS_SOBSENT|FLAGS_BURST))
