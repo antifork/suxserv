@@ -69,6 +69,8 @@ typedef gboolean (*table_del_f)();
  */
 typedef void (*table_clean_f)(void);
 
+typedef gint (*table_count_f)(void);
+
 struct TABLE
 {	
     table_get_f get;
@@ -80,6 +82,8 @@ struct TABLE
     table_destroy_f destroy;
 
     table_clean_f clean;
+    
+    table_count_f count;
 
     GHashTable *__hash_tbl;
     GMemChunk *__mem_pool;
@@ -130,6 +134,12 @@ struct TABLE
 	    g_mem_chunk_destroy(NAME##_table.__mem_pool);						\
 	}
 
+#define COUNT_FUNC(NAME)										\
+	G_INLINE_FUNC gint NAME##_table_count(void)							\
+	{												\
+	    return g_hash_table_size(NAME##_table.__hash_tbl);						\
+	}
+
 #define SETUP_FUNC(NAME, DATA_TYPE, HASH_FUNC)								\
 	void NAME##_table_setup(gint PRE_ALLOC)								\
 	{												\
@@ -142,6 +152,7 @@ struct TABLE
 	    NAME##_table.del = (table_del_f)NAME##_table_del;						\
 	    NAME##_table.destroy = (table_destroy_f)NAME##_table_destroy;				\
 	    NAME##_table.clean = (table_clean_f)NAME##_table_clean;					\
+	    NAME##_table.count = (table_count_f)NAME##_table_count;				\
 	}
 
 #define LOCAL_TABLE_INSTANCE(NAME)	TABLE_T NAME##_table;
@@ -155,6 +166,7 @@ struct TABLE
 	DEL_FUNC(NAME, DATA_TYPE, KEY_NAME)				\
 	DESTROY_FUNC(NAME, DATA_TYPE)					\
 	CLEAN_FUNC(NAME)						\
+	COUNT_FUNC(NAME)						\
 	SETUP_FUNC(NAME, DATA_TYPE, HASH_FUNC)
 
 #define TABLE_SETUP_FUNC(NAME, PRE_ALLOC)	NAME##_table_setup(PRE_ALLOC)
