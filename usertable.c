@@ -16,7 +16,10 @@
 #define MEM_CHUNK	256
 #define FNV_prime	16777619UL
 typedef unsigned long hash_t;
-static __inline hash_t hash(gchar *s)
+#ifdef G_CAN_INLINE
+G_INLINE_FUNC
+#endif
+static hash_t hash(gchar *s)
 {
     hash_t h = 0;
     gchar *e = s + strlen(s) - 1;
