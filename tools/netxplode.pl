@@ -43,7 +43,15 @@ my @actions = (
 #	       "PRIVMSG netxplodeRAND :hi\n",
 #	       "PRIVMSG netxplodeRAND :mooloadbot\n",
 #	       "PRIVMSG #netxplodeRAND :mark - TIME\n",
-	       "NICK netxplodeRAND\n", 
+	       "JOIN #netxplodeRAND\n", 
+	       "JOIN #netxplodeRAND\n",
+	       "JOIN #netxplodeRAND\n",
+	       "JOIN #netxplodeRAND\n",
+	       "JOIN #netxplodeRAND\n", 
+	       "JOIN #netxplodeRAND\n",
+	       "JOIN #netxplodeRAND\n",
+	       "JOIN #netxplodeRAND\n",
+	       "JOIN #netxplodeRAND\n",
 	       "NICK netxplodeRAND\n",
 	       "NICK netxplodeRAND\n",
 	       "NICK netxplodeRAND\n",
@@ -62,7 +70,7 @@ my @actions = (
                "INFO services.*\n",
                "INFO services.*\n",
 #	       "LIST *RAND*\n",
-	       "ADMIN services.*\n",
+#	       "ADMIN services.*\n",
 	       "MOTD services.*\n",
 	       "MOTD services.*\n",
 	       "MOTD services.*\n",
@@ -71,9 +79,9 @@ my @actions = (
 #	       "WHOWAS netxplodeRAND\n",
 	       "AWAY awayRAND\n",
 	       "AWAY\n",
-#	       "TOPIC #clones :sux RAND sux\n",
+	       "TOPIC #clones :sux RAND sux\n",
 #	       "LINKS *RAND*\n",
-#	       "USERS\n"
+	       "LUSERS x services.*\n"
 );
 
 
