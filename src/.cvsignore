@@ -4,6 +4,5 @@ parse.c
 gmon.out
 *.swp
 Makefile
-Makefile.in
 .deps
 .libs

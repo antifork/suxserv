@@ -4,17 +4,6 @@ gmon.out
 *.da
 *.swp
 core.*
-Makefile.in
-aclocal.m4
-config.guess
-config.h.in
-config.sub
-configure
-depcomp
-install-sh
-ltmain.sh
-missing
-mkinstalldirs
 Makefile
 config.h
 config.log
