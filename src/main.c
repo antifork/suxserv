@@ -79,7 +79,7 @@ gint main(gint argc, gchar **argv)
 
     if((me.handle = connect_server(me.host, me.port)))
     {
-	switch(fork())
+	switch(0)//fork())
 	{
 	    case 0:
 		/* child */		
@@ -129,7 +129,8 @@ static void wait_for_termination(void)
     received_signal = g_async_queue_pop(me.sig_queue);
     if(*received_signal != 0)
     {
-	g_critical("Received signal %d, quitting", *received_signal);
+	g_critical("Received signal %d (%s), quitting",
+		*received_signal, g_strsignal(*received_signal));
     }
 }
 
@@ -164,26 +165,9 @@ G_INLINE_FUNC void my_g_main_context_iteration(void)
 {
     gint max_priority;
     gint timeout;
-    gboolean some_ready;
     gint nfds, allocated_nfds = 4;
 
-    g_mutex_unlock(me.ctx_mutex);
-
-    if(!g_main_context_acquire(me.ctx))
-    {
-	gboolean got_own;
-
-	g_mutex_lock(me.ctx_mutex);
-	got_own = g_main_context_wait(me.ctx, me.ctx_cond, me.ctx_mutex);
-
-	if(!got_own)
-	{
-	    g_mutex_unlock(me.ctx_mutex);
-	    return;
-	}
-    }
-
-    some_ready = g_main_context_prepare(me.ctx, &max_priority);
+    g_main_context_prepare(me.ctx, &max_priority);
     nfds = g_main_context_query(me.ctx, max_priority, &timeout, me.fds, allocated_nfds);
 
     if(nfds || timeout != 0)
@@ -196,10 +180,6 @@ G_INLINE_FUNC void my_g_main_context_iteration(void)
 
     g_main_context_check(me.ctx, max_priority, me.fds, nfds);
     g_main_context_dispatch(me.ctx);
-
-    g_main_context_release(me.ctx);
-
-    g_mutex_lock(me.ctx_mutex);
 
     return;
 }
@@ -216,7 +196,7 @@ static void setup_mutexes(void)
     me.readbuf_cond = g_cond_new();
     me.writebuf_mutex = g_mutex_new();
 
-    me.time_mutex = g_mutex_new();
+//    me.time_mutex = g_mutex_new();
 
     me.sig_queue = g_async_queue_new();
 
@@ -334,6 +314,7 @@ static int start_parse_thread(void)
 	g_mutex_lock(me.readbuf_mutex);
 	if(!me.recvQ->len)
 	{
+	    g_thread_yield();
 	    g_cond_wait(me.readbuf_cond, me.readbuf_mutex);
 	}
 
@@ -362,9 +343,9 @@ static int start_parse_thread(void)
 	}
 	g_mutex_unlock(me.readbuf_mutex);
 
-	g_mutex_lock(me.time_mutex);
+//	g_mutex_lock(me.time_mutex);
 	NOW = time(NULL);
-	g_mutex_unlock(me.time_mutex);
+//	g_mutex_unlock(me.time_mutex);
 
 	for(i = 0; i < count; i++)
 	{
@@ -372,7 +353,7 @@ static int start_parse_thread(void)
 	}
 
 	//memset((gpointer)strings, 0x0, sizeof(gchar*) * STRINGS_PER_CYCLE);
-	g_string_erase(read_data, 0, -1);
+	//g_string_erase(read_data, 0, -1);
 
 	g_mutex_lock(run_mutex);
 	is_thread_running = is_running;
