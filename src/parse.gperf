@@ -62,7 +62,7 @@ gint parse(gchar *buffer)
     gint i, len = 0;
     struct Message *mptr;
 
-    /* fprintf(stderr, "<: %s\n", buffer); */
+    /* g_fprintf(stderr, "<: %s\n", buffer); */
     s = sender;
     *s = '\0';
     
@@ -98,24 +98,6 @@ gint parse(gchar *buffer)
 	    /* XXX: LATAH
 	    User *from = find_client(sender);
 	    */
-
-	    /*
-	     * okay, this doesn't seem to do much here.
-	     * from->name _MUST_ be equal to sender. 
-	     * That's what find_client does.
-	     * find_client will find servers too, and since we don't use server
-	     * masking, the find server call is useless (and very wasteful).
-	     * now, there HAS to be a from and from->name and
-	     * sender have to be the same
-	     * for us to get to the next if. but the next if
-	     * starts out with if(!from)
-	     * so this is UNREACHABLE CODE! AGH! - lucas
-	     *
-	     *  if (!from || mycmp(from->name, sender))
-	     *     from = find_server(sender, (aClient *) NULL);
-	     *  else if (!from && strchr(sender, '@'))
-	     *     from = find_nickserv(sender, (aClient *) NULL);
-	     */
 
 	    para[0] = sender;
 	    /*
@@ -166,7 +148,7 @@ gint parse(gchar *buffer)
     
     if (!mptr || !mptr->cmd) 
     {
-	fprintf(stderr, "cmd not found (%s) ..\n", ch);
+	g_warning("cmd not found (%s) ..\n", ch);
         return -1;
     }
     
