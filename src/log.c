@@ -8,7 +8,7 @@
 void __sux_irc_log_handler(const gchar *log_domain, GLogLevelFlags log_level,
 	const gchar *message, GMainLoop *main_loop)
 {
-    gchar *err_type;
+    gchar *err_type = NULL;
     gint save_errno = errno;
     
     if(log_level & G_LOG_LEVEL_ERROR)
@@ -23,6 +23,8 @@ void __sux_irc_log_handler(const gchar *log_domain, GLogLevelFlags log_level,
 	err_type = "Info";
     else if(log_level & G_LOG_LEVEL_DEBUG)
 	err_type = "Debug";
+    else
+	err_type = "Unknown";
 
     if(log_level & G_LOG_LEVEL_SYSLOG)
     {
@@ -66,7 +68,7 @@ void __sux_irc_log_handler(const gchar *log_domain, GLogLevelFlags log_level,
 void __sux_tty_log_handler(const gchar *log_domain, GLogLevelFlags log_level,
 	const gchar *message)
 {
-    gchar *err_type;
+    gchar *err_type = NULL;
     gint save_errno = errno;
     
     if(log_level & G_LOG_LEVEL_ERROR)
@@ -81,6 +83,8 @@ void __sux_tty_log_handler(const gchar *log_domain, GLogLevelFlags log_level,
 	err_type = "Info";
     else if(log_level & G_LOG_LEVEL_DEBUG)
 	err_type = "Debug";
+    else
+	err_type = "Unknown";
 
     if(log_level & G_LOG_LEVEL_ERRNO)
     {
