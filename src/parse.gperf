@@ -150,7 +150,7 @@ gint parse(gchar *buffer)
     
     if (!mptr || !mptr->cmd) 
     {
-	g_warning("cmd not found (%s) ..", ch);
+	/* g_warning("cmd not found (%s) ..", ch); */
         return -1;
     }
     
