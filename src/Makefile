@@ -1,7 +1,7 @@
 CC=gcc
 RM=/bin/rm
-LDFLAGS=-L/usr/lib -lglib-2.0 -pg
-CFLAGS=-I../include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -Wall -g -pg -fprofile-arcs
+LDFLAGS=-L/usr/lib `pkg-config --libs glib-2.0` -pg
+CFLAGS=-I../include `pkg-config --cflags glib-2.0` -Wall -g -pg -fprofile-arcs
 ME=sux
 
 SOURCES = main.c parse.c dispatch.c match.c table.c s_err.c network.c log.c
