@@ -1,20 +1,18 @@
 #!/bin/sh
 
-mintimeout=30
+mintimeout=10
+timeout=$mintimeout
 
-test -z "$1" &&
+test -n "$1" &&
 {
-    echo "usage: $0 <timeout>";
-    exit -1;
+    timeout=$1
 }
 
-test "$1" -lt $mintimeout &&
+test "$timeout" -lt $mintimeout &&
 {
     echo "timeouts smaller than $mintimeout secs are NOT recommended !!";
-    exit 1;
+    timeout=$mintimeout
 }
-
-timeout=$1;
 
 trap "killall netxplode.pl ; exit" 2 3 15
 
