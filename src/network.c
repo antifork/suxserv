@@ -26,7 +26,7 @@ GIOChannel *connect_server(gchar *host, guint port)
     sock.sin_port = port;
     sock.sin_family = AF_INET;
 
-    g_message("connecting to %s ... ", inet_ntop(AF_INET,
+    g_message("Connecting to %s ... ", inet_ntop(AF_INET,
 		(const void *) &sock.sin_addr, hostbuf, HOSTLEN-1));
 
     fflush(stderr);
@@ -91,6 +91,8 @@ void send_out(gchar *fmt, ...)
     }
 
     net_transmit(me.handle, buffer, len);
+
+    /* fprintf(stderr, ">: %s", buffer); */
 
     return;
 }
@@ -157,7 +159,7 @@ gchar *net_receive(GIOChannel *handle, gsize *arnold) /* the terminator */
 	    return NULL;
 
 	default:
-	    g_error_syslog("Unknown status returned by net_receive() [this is a bug !]");
+	    g_error("Unknown status returned by net_receive() [this is a bug !]");
 	    return NULL;
     }
     
@@ -180,6 +182,28 @@ gboolean net_flush(GIOChannel *dest)
 	case G_IO_STATUS_AGAIN:
 	case G_IO_STATUS_EOF:
 	    return TRUE;
+    }
+
+    return FALSE;
+}
+
+gboolean net_shutdown(GIOChannel *source)
+{
+    GError *err = NULL;
+    while(TRUE)
+    {
+	switch(g_io_channel_shutdown(source, TRUE, &err))
+	{
+	    case G_IO_STATUS_ERROR:
+		g_critical_syslog("Close error: %s", err->message);
+		g_error_free(err);
+		return FALSE;
+	    case G_IO_STATUS_AGAIN:
+		continue;
+	    case G_IO_STATUS_NORMAL:
+	    case G_IO_STATUS_EOF:
+		return TRUE;
+	}
     }
 
     return FALSE;
