@@ -16,7 +16,7 @@ gint main(gint argc, gchar **argv)
 {
     GMainLoop *main_loop;
 
-    if(!GLIB_CHECK_VERSION(3, 0, 0))
+    if(!GLIB_CHECK_VERSION(2, 0, 0))
     {
 	g_critical("GLib version 2.0.0 or above is required");
 	exit(EXIT_FAILURE);
