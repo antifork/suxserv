@@ -15,6 +15,24 @@ REMOTE_TABLE_INSTANCE(channel);
 REMOTE_MEMPOOL_INSTANCE(cmembers);
 REMOTE_MEMPOOL_INSTANCE(links);
 
+struct
+{
+    gshort capabs;
+    gchar passwd[PASSWDLEN + 1];
+    gchar name[PASSWDLEN + 1];
+    User *ptr;
+} uplink;
+
+void nego_start(void)
+{
+    send_out("PASS %s :TS", me.pass);
+    send_out("CAPAB NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
+    send_out("SVINFO 5 3 0 :%lu", time(NULL));
+    send_out("SERVER %s 1 :%s", me.name, me.info);
+
+    uplink.ptr = _TBL(user).alloc(SUX_UPLINK_NAME);
+}
+
 gint m_private(User *u, gint parc, gchar **parv)
 {
     DUMMY
@@ -107,12 +125,10 @@ gint m_nick(User *u, gint parc, gchar **parv)
     if(parc > 3)
     {
 	/* new user. */
-	g_return_val_if_fail(u == NULL, -1);
-	
 	if((u = _TBL(user).get(parv[1])))
 	{
 	    /* uh ? we already have this ? */
-	    g_warning("new user %s already exists in hash table ..",
+	    g_error("new user %s already exists in hash table ..",
 		    parv[1]);
 	    return 0;
 	}
@@ -126,8 +142,6 @@ gint m_nick(User *u, gint parc, gchar **parv)
 	strcpy(u->server, parv[7]);
 	/* XXX: nickip handling */
 	strcpy(u->gcos, parv[10]);
-
-	return 1;
     }
     else
     {
@@ -140,9 +154,9 @@ gint m_nick(User *u, gint parc, gchar **parv)
 	strcpy(u->nick, parv[1]);
 	u->ts = strtoul(parv[2], NULL, 10);
 	_TBL(user).put(u);
-
-	return 1;
     }
+    
+    return 1;
 }
 
 /*
@@ -264,12 +278,6 @@ gint m_part(User *u, gint parc, gchar **parv)
     return 1;
 }
 
-/*
- * m_kill 
- * parv[0] = sender prefix 
- * parv[1] = kill victim 
- * parv[2] = kill path
- */
 gint m_kill(User *u, gint parc, gchar **parv)
 {
     DUMMY
@@ -308,13 +316,56 @@ gint m_motd(User *u, gint parc, gchar **parv)
  */
 gint m_server(User *u, gint parc, gchar **parv)
 {
-    gint hopcount;
-    
-    strcpy(me.uplink, parv[1]);
-    hopcount = atoi(parv[2]);
+    if(u == NULL)
+    {
+	gchar *name = parv[1];
+	
+	/* my uplink */
+	if(uplink.ptr != _TBL(user).get(name))
+	{
+	    send_out("ERROR :No C/N Lines");
+	    send_out(":%s SQUIT %s :No C/N Lines",
+		    me.name, name);
 
-    g_message("Linked with %s [%s], distant %d hop%s",
-	    me.uplink, parv[3], hopcount, hopcount != 1 ? "s" : "");
+	    STOP_RUNNING();
+	}
+
+	if(mycmp(uplink.passwd, me.pass))
+	{
+	    send_out("ERROR :Access Denied (password mismatch)");
+	    send_out(":%s SQUIT %s :Access Denied (password mismatch)",
+		    me.name, name);
+
+	    STOP_RUNNING();
+	}
+
+	if(!(uplink.capabs & NEEDED_CAPABS))
+	{
+	    send_out("ERROR :Server does not support all the capabs I need");
+	    send_out(":%s SQUIT %s :Server does not support all the capabs I need",
+		    me.name, name);
+
+	    STOP_RUNNING();
+	}
+
+	u = me.uplink = uplink.ptr;
+
+	u->mode = atoi(parv[2]);
+	strcpy(u->gcos, parv[3]);
+
+	g_message("Linked with %s [%s], distant %d hop%s",
+		u->nick, u->gcos, u->mode, u->mode != 1 ? "s" : "");
+    }
+    else
+    {
+	/* server behind my uplink */
+	u = _TBL(user).get(parv[1]);
+	g_return_val_if_fail(u == NULL, -1);
+
+	u = _TBL(user).alloc(parv[1]);
+	u->mode = atoi(parv[2]);
+	strcpy(u->gcos, parv[3]);
+    }
 
     return 0;
 }
@@ -360,10 +411,22 @@ gint m_squit(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
+
+/*
+ * m_pass 
+ * parv[0] = sender prefix 
+ * parv[1] = password
+ * parv[2] = optional extra version information
+ */
 gint m_pass(User *u, gint parc, gchar **parv)
 {
-    DUMMY
+    g_return_val_if_fail(me.uplink == NULL, -1);
+
+    g_strlcpy(uplink.passwd, parv[1], sizeof(uplink.passwd));
+    
+    return 0;
 }
+
 gint m_umode(User *u, gint parc, gchar **parv)
 {
     DUMMY
@@ -381,24 +444,30 @@ gint m_svinfo(User *u, gint parc, gchar **parv)
 {
     time_t deltat, tmptime, theirtime;
 
-    g_return_val_if_fail(parc > 4, 0);
-    
+    g_return_val_if_fail(parc > 4, -1);
+
     tmptime = time(NULL);
     theirtime = atol(parv[4]);
     deltat = abs(theirtime - tmptime);
 
     if(deltat > 45)
     {
-	g_warning("Link %s dropped, excessive TS delta (%ld)", parv[0], deltat);
-	send_out(":%s SQUIT %s :excessive TS delta (%ld)",
-		me.name, parv[0], deltat);
+	g_warning("Link %s dropped, excessive TS delta (%ld)", u->nick, deltat);
+	send_out("ERROR :Closing Link: excessive TS delta (%ld)", deltat);
+	send_out(":%s SQUIT %s :Closing Link: excessive TS delta (%ld)",
+		me.name, u->nick, deltat);
 	STOP_RUNNING();
     }
     else if(deltat > 15)
     {
 	g_warning("Link %s notable TS delta (my TS=%ld, their TS=%ld, delta=%ld",
-		parv[0], tmptime, theirtime, deltat);
+		u->nick, tmptime, theirtime, deltat);
     }
+
+    g_message("Link %s TS protocol version %s (min %s)",
+	    u->nick, parv[1], parv[2]);
+
+    me.uplink->ts = theirtime;
 
     return 0;
 }
@@ -587,7 +656,29 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
 
 gint m_capab(User *u, gint parc, gchar **parv)
 {
-    DUMMY
+    gint i;
+
+    g_return_val_if_fail(me.uplink == NULL, -1);
+
+    for(i = 1; i < parc; i++)
+    {
+	if (mycmp(parv[i], "NOQUIT") == 0)
+	    uplink.capabs |= CAPAB_NOQUIT;
+	else if (mycmp(parv[i], "BURST") == 0)
+	    uplink.capabs |= CAPAB_BURST;
+	else if (mycmp(parv[i], "UNCONNECT") == 0)
+	    uplink.capabs |= CAPAB_UNCONN;
+	else if (mycmp(parv[i], "DKEY") == 0)
+	    uplink.capabs |= CAPAB_DKEY;
+	else if (mycmp(parv[i], "ZIP") == 0)
+	    uplink.capabs |= CAPAB_ZIP;
+	else if (mycmp(parv[i], "NICKIP") == 0)
+	    uplink.capabs |= CAPAB_NICKIP;
+	else if (mycmp(parv[i], "TSMODE") == 0)
+	    uplink.capabs |= CAPAB_TSMODE;
+    }
+
+    return 0;
 }
 gint m_burst(User *u, gint parc, gchar **parv)
 {

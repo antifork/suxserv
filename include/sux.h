@@ -13,6 +13,7 @@
 #define	TOPICLEN	307
 #define	CHANNELLEN      32
 #define KEYLEN		32
+#define	PASSWDLEN 	63
 
 #define UMODE_o 0x0001
 #define UMODE_i 0x0002
@@ -43,6 +44,7 @@ typedef struct user
     time_t flood_time;
     gshort floodlev;
     gshort motd, version;
+    
 } User;
 
 #define	CHFL_CHANOP     0x0001	/* Channel operator */
@@ -106,6 +108,18 @@ typedef struct slink
     gint flags;
 } SLink;
 
+#define CAPAB_NOQUIT  0x0002 /* Supports NOQUIT */
+#define CAPAB_BURST   0x0008 /* server supports BURST command */
+#define CAPAB_UNCONN  0x0010 /* server supports UNCONNECT */
+#define CAPAB_DKEY    0x0020 /* server supports dh-key exchange using "DKEY" */
+#define CAPAB_ZIP     0x0040 /* server supports gz'd links */
+#define CAPAB_DOZIP   0x0080 /* output to this link shall be gzipped */
+#define CAPAB_DODKEY  0x0100 /* do I do dkey with this link? */
+#define CAPAB_NICKIP  0x0200 /* IP in the NICK line? */
+#define CAPAB_TSMODE  0x0400 /* MODE's parv[2] is chptr->channelts for channel mode */
+
+#define NEEDED_CAPABS	(CAPAB_NOQUIT | CAPAB_BURST | CAPAB_UNCONN | CAPAB_NICKIP)
+
 #define SUX_MODULE	"Sux Core Services"
 #define SUX_RELEASE	"0.02"
 #define SUX_VERSION	SUX_MODULE " " SUX_RELEASE
@@ -113,6 +127,7 @@ typedef struct slink
 #define SUX_SERV_NAME	"services.azzurra.org"
 #define SUX_PASS	"codio"
 
-#define SUX_UPLINK	"twisted.vejnet.org"
+#define SUX_UPLINK_HOST	"twisted.vejnet.org"
+#define SUX_UPLINK_NAME "server.dal.net"
 
 #endif /* __sux_h__ */
