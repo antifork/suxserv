@@ -1,42 +1,42 @@
 #ifndef __h_h__
 #define __h_h__
 
-extern int  m_private(int, char **);
-extern int  m_topic(int, char **);
-extern int  m_join(int, char **);
-extern int  m_part(int, char **);
-extern int  m_mode(int, char **);
-extern int  m_ping(int, char **);
-extern int  m_pong(int, char **);
-extern int  m_kick(int, char **);
-extern int  m_nick(int, char **);
-extern int  m_error(int, char **);
-extern int  m_notice(int, char **);
-extern int  m_quit(int, char **);
-extern int  m_kill(int, char **);
-extern int  m_server(int, char **);
-extern int  m_info(int, char **);
-extern int  m_stats(int, char **);
-extern int  m_version(int, char **);
-extern int  m_squit(int, char **);
-extern int  m_pass(int, char **);
-extern int  m_umode(int, char **);
-extern int  m_motd(int, char **);
-extern int  m_svinfo(int, char **);
-extern int  m_sjoin(int, char **);
-extern int  m_time(int, char **);
-extern int  m_capab(int, char **);
-extern int  m_burst(int, char **);
-extern int  m_away(int, char **);
-extern int  m_admin(int, char **);
-extern int  m_gnotice(int, char **);
-extern int  m_nickcoll(int, char **);
-extern int  m_cs(int, char **);
-extern int  m_ns(int, char **);
-extern int  m_os(int, char **);
-extern int  m_rs(int, char **);
-extern int  m_ms(int, char **);
+#include "sux.h"
 
-extern void send_out();
+extern gint  m_private(User *, gint, gchar **);
+extern gint  m_topic(User *, gint, gchar **);
+extern gint  m_join(User *, gint, gchar **);
+extern gint  m_part(User *, gint, gchar **);
+extern gint  m_mode(User *, gint, gchar **);
+extern gint  m_ping(User *, gint, gchar **);
+extern gint  m_pong(User *, gint, gchar **);
+extern gint  m_kick(User *, gint, gchar **);
+extern gint  m_nick(User *, gint, gchar **);
+extern gint  m_error(User *, gint, gchar **);
+extern gint  m_notice(User *, gint, gchar **);
+extern gint  m_quit(User *, gint, gchar **);
+extern gint  m_kill(User *, gint, gchar **);
+extern gint  m_server(User *, gint, gchar **);
+extern gint  m_info(User *, gint, gchar **);
+extern gint  m_stats(User *, gint, gchar **);
+extern gint  m_version(User *, gint, gchar **);
+extern gint  m_squit(User *, gint, gchar **);
+extern gint  m_pass(User *, gint, gchar **);
+extern gint  m_umode(User *, gint, gchar **);
+extern gint  m_motd(User *, gint, gchar **);
+extern gint  m_svinfo(User *, gint, gchar **);
+extern gint  m_sjoin(User *, gint, gchar **);
+extern gint  m_time(User *, gint, gchar **);
+extern gint  m_capab(User *, gint, gchar **);
+extern gint  m_burst(User *, gint, gchar **);
+extern gint  m_away(User *, gint, gchar **);
+extern gint  m_admin(User *, gint, gchar **);
+extern gint  m_gnotice(User *, gint, gchar **);
+extern gint  m_nickcoll(User *, gint, gchar **);
+extern gint  m_cs(User *, gint, gchar **);
+extern gint  m_ns(User *, gint, gchar **);
+extern gint  m_os(User *, gint, gchar **);
+extern gint  m_rs(User *, gint, gchar **);
+extern gint  m_ms(User *, gint, gchar **);
 
 #endif /* __h_h__ */

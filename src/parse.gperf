@@ -4,16 +4,15 @@
 #include "main.h"
 #include "parse.h"
 #include "match.h"
+#include "table.h"
+#include "network.h"
 
-static gchar *para[MAXPARA + 1];
-static gchar sender[HOSTLEN + 1];
-/* XXX: LATAH
 static void remove_unknown(gchar *, gchar *);
-*/
-extern MyData me;
-extern User *find_client(gchar *);
+
+REMOTE_TABLE_INSTANCE(user);
+
 %}
-struct Message { gchar *cmd; gint (*func)(gint, gchar **); guint count; };
+struct Message { gchar *cmd; gint (*func)(User *, gint, gchar **); guint count; };
 %%
 436, m_nickcoll, 0
 ADMIN, m_admin, 0
@@ -58,9 +57,13 @@ RS, m_rs, 0
 
 gint parse(gchar *buffer)
 {
+    static gchar sender[HOSTLEN + 1];
+    static gchar *para[MAXPARA + 1];
+
     gchar *ch, *s;
     gint i, len = 0;
     struct Message *mptr;
+    User *u = NULL;
 
     /* g_fprintf(stderr, "<: %s\n", buffer); */
     s = sender;
@@ -93,26 +96,25 @@ gint parse(gchar *buffer)
 	 * all --msa  (": NOTICE nick ...")
 	 */
 	
-	if (*sender)
+	/* for now, do this only for clients */
+	if (*sender && !strchr(sender, '.'))
 	{
-	    /* XXX: LATAH
-	    User *from = find_client(sender);
-	    */
+	    u = _TBL(user).get(sender);
 
 	    para[0] = sender;
+
 	    /*
 	     * Hmm! If the client corresponding to the prefix is not
 	     * found--what is the correct action??? Now, I will ignore the
 	     * message (old IRC just let it through as if the prefix just
 	     * wasn't there...) --msa
 	     */
-	    /* XXX: LATAH
-	    if (!from) 
+	    if (!u) 
 	    {
 		remove_unknown(sender, buffer);
 		return -1;
 	    }
-	    */
+
 	}
 	while (*ch == ' ')
 	    ch++;
@@ -148,7 +150,7 @@ gint parse(gchar *buffer)
     
     if (!mptr || !mptr->cmd) 
     {
-	g_warning("cmd not found (%s) ..\n", ch);
+	g_warning("cmd not found (%s) ..", ch);
         return -1;
     }
     
@@ -189,20 +191,21 @@ gint parse(gchar *buffer)
     para[i] = NULL;
     mptr->count++;
     
-    return (*mptr->func) (i, para);
+    return (*mptr->func) (u, i, para);
 }
 
-/* XXX: LATAH
 static void remove_unknown(gchar *sender, gchar *buffer)
 {
-    / *
+    /*
      * Do kill if it came from a server because it means there is a
      * ghost user on the other server which needs to be removed. -avalon
      * Tell opers about this. -Taner
-     * /
+     */
     if (!strchr(sender, '.'))
+    {
 	send_out(":%s KILL %s :%s (%s<-(?))",
 		me.name, sender, me.name, sender);
+    }
     else
     {
 	send_out(":%s GLOBOPS :Unknown prefix (%s), Squitting %s",
@@ -211,4 +214,3 @@ static void remove_unknown(gchar *sender, gchar *buffer)
 		me.name, sender, buffer);
     }
 }
-*/
