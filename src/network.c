@@ -336,7 +336,7 @@ void send_out(gchar *fmt, ...)
 	len++;
     }
 
-/*    g_fprintf(stderr, ">: %s", send_out_buf);*/
+    /* g_fprintf(stderr, ">: %s", send_out_buf); */
 
     g_mutex_lock(me.writebuf_mutex);
     me.sendQ = g_string_append(me.sendQ, send_out_buf);
