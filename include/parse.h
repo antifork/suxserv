@@ -5,6 +5,7 @@
 
 #include "sux.h"
 
-int parse(gchar *);
+gint parse(gchar *);
+void send_message_count(gchar *);
 
 #endif

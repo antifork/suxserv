@@ -26,7 +26,7 @@ clean:
 	$(RM) -f *.da a.out gmon.out
 
 parse.c: parse.gperf
-	gperf -tDW cmds -N hash_get_cmd -K cmd parse.gperf > parse.c
+	gperf -tGDW cmds -N hash_get_cmd -K cmd parse.gperf > parse.c
 
 .c.o:
 	$(CC) $(CFLAGS) $(INCLUDEDIR) -c $<

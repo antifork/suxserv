@@ -6,6 +6,7 @@
 #include "match.h"
 #include "table.h"
 #include "network.h"
+#include "numeric.h"
 
 static void remove_unknown(gchar *, gchar *);
 
@@ -212,3 +213,15 @@ static void remove_unknown(gchar *sender, gchar *buffer)
 		me.name, sender, buffer);
     }
 }
+
+void send_message_count(gchar *requester)
+{
+    gint i = 0;
+    for(i = 0; i < TOTAL_KEYWORDS; i++)
+    {
+	send_out(rpl_str(RPL_STATSCOMMANDS),
+		me.name, requester, cmds[i].cmd, cmds[i].count);
+    }
+}
+
+
