@@ -316,4 +316,6 @@ static int start_sig_thread(void)
 		break;
 	}
     }
+
+    return 0;
 }
