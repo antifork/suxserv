@@ -17,7 +17,7 @@
  * 
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement:
- *    This product includes software developed by Chip Norkus.
+ *    This product includes software developed by Barnaba Marcello.
  * 
  * 4. The names of the maintainer, developers and contributors may not be
  *    used to endorse or promote products derived from this software
@@ -46,6 +46,7 @@
 #include "match.h"
 #include "network.h"
 #include "parse.h"
+#include "threads.h"
 
 #define DUMMY return 0;
 
@@ -64,7 +65,6 @@ static struct
     gshort capabs;
     gchar passwd[PASSWDLEN + 1];
     gchar name[PASSWDLEN + 1];
-    User *ptr;
 
     GSource *ping_tag;
     time_t firsttime;
@@ -75,21 +75,40 @@ static struct
 static gboolean ping_timeout(void)
 {
     /* ping timeout */
-    g_critical("Ping Timeout (%d usecs)", PING_FREQUENCY);
+    g_critical("Ping Timeout");
     
     return FALSE;
 }
 
 static gboolean send_ping(User *u)
 {
+    gchar ping_buf[64];
+    
     if(uplink.ping_tag)
     {
 	return ping_timeout();
     }
 
-    uplink.ping_tag = g_timeout_source_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
+    g_sprintf(ping_buf, "PING :%s\n", me.name);
 
-    send_out("PING :%s", u->nick);
+    /*
+     * this saves a g_mutex_lock() and g_mutex_unlock() on every send_out()
+     */
+    g_mutex_lock(me.writebuf_mutex);
+    me.sendQ = g_string_append(me.sendQ, ping_buf);
+    g_mutex_unlock(me.writebuf_mutex);
+
+    g_mutex_lock(me.tag_mutex);
+    if(me.send_tag == NULL)
+    {
+	me.send_tag = g_source_add(me.handle, G_IO_OUT | G_IO_ERR, (GIOFunc)net_send_callback);
+    }
+    g_mutex_unlock(me.tag_mutex);
+    /*
+     * end of cut-&-paste from send_out()
+     */
+    
+    uplink.ping_tag = g_timeout_source_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
 
     return TRUE;
 }
@@ -98,43 +117,33 @@ void nego_start(void)
 {
     send_out("PASS %s :TS", me.pass);
     send_out("CAPAB BURST NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
-//    g_mutex_lock(me.time_mutex);
     send_out("SVINFO 5 3 0 :%lu", NOW);
-//    g_mutex_unlock(me.time_mutex);
     send_out("SERVER %s 1 :%s", me.name, me.info);
 
     uplink.ping_tag = g_timeout_source_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
-    uplink.ptr = _TBL(user).alloc(SUX_UPLINK_NAME);
+    
+    me.uplink = _TBL(user).alloc(SUX_UPLINK_NAME);
+    me.table_ptr = _TBL(user).alloc(SUX_SERV_NAME);
 
-    me.serv_ptr = _TBL(user).alloc(SUX_SERV_NAME);
+    strcpy(me.table_ptr->info, me.info);
+    me.table_ptr->ts = NOW;
+    me.table_ptr->mode = 0;
 }
 
 G_INLINE_FUNC void m_message(User *u, gint parc, gchar **parv, gchar *type)
 {
-    gchar *sender = parv[0], *dest = parv[1], *msg = parv[2], *at, *srv_name;
+    gchar *srv_name;
 
-    at = strchr(dest, '@');
-    if(at)
+    srv_name = strchr(parv[1], '@');
+    if(srv_name)
     {
-	*at = '\0';
-	srv_name = at + 1;
+	*srv_name++ = '\0';
 	if(mycmp(me.name, srv_name))
 	{
-	    g_message("fake direction, message for %s@%s arrived to me (%s)",
-		    dest, srv_name, me.name);
+	    g_message("Fake direction, message for %s@%s arrived to me (%s)",
+		    parv[1], srv_name, me.name);
 	    return;
 	}
-    }
-
-    if(dest[0] == '#')
-    {
-	send_out(":ChanServ %s %s :%s <%s> %s",
-		type, sender, dest, sender, msg);
-    }
-    else
-    {
-	send_out(":%s %s %s :you said %s",
-		dest, type, sender, msg);
     }
 
     return;
@@ -200,10 +209,17 @@ gint m_mode(User *u, gint parc, gchar **parv)
 
 gint m_ping(User *u, gint parc, gchar **parv)
 {
-    if(uplink.flags & (FLAGS_SOBSENT|~FLAGS_BURST))
+    if(u == me.uplink &&
+	    uplink.flags & (FLAGS_SOBSENT|~FLAGS_BURST))
     {
+	gint sendqlen;
 	uplink.flags &= ~FLAGS_SOBSENT;
-	send_out("BURST %d", me.sendQ->len);
+
+	g_mutex_lock(me.writebuf_mutex);
+	sendqlen = me.sendQ->len;
+	g_mutex_unlock(me.writebuf_mutex);
+
+	send_out("BURST %d", sendqlen);
     }
 
     send_out(":%s PONG :%s", me.name, parv[1]);
@@ -232,12 +248,12 @@ gint m_pong(User *u, gint parc, gchar **parv)
 
     if(uplink.ping_tag)
     {
-	g_source_del(&uplink.ping_tag);
-//	uplink.ping_tag = NULL;
+	g_source_del(uplink.ping_tag);
+	uplink.ping_tag = NULL;
 	return 0;
     }
 
-    if(u != uplink.ptr)
+    if(u != me.uplink)
     {
 	return 0;
     }
@@ -248,7 +264,7 @@ gint m_pong(User *u, gint parc, gchar **parv)
 
 	uplink.flags &= ~FLAGS_USERBURST;
 	send_out(":%s GNOTICE :%s has processed user/channel burst, "
-		"sending topic burst.", me.name, u->nick);
+		"sending topic burst.", me.name, u->name);
 
 	uplink.flags |= FLAGS_SOBSENT;
 	
@@ -261,7 +277,7 @@ gint m_pong(User *u, gint parc, gchar **parv)
     {
 	uplink.flags &= ~FLAGS_TOPICBURST;
 	send_out(":%s GNOTICE :%s has processed topic burst (synched "
-		"to network data).", me.name, u->nick);
+		"to network data).", me.name, u->name);
 	send_out("PING :%s", me.name);
     }
 
@@ -272,7 +288,7 @@ static void send_nick_burst(void)
 {
     struct my_user
     {
-	gchar *nick;
+	gchar *name;
 	gchar *umode;
 	gchar *ircname;
     } my_users[] = {
@@ -294,18 +310,18 @@ static void send_nick_burst(void)
 	c->ts = now;
     }
 
-    for(johnny = my_users; johnny->nick; johnny++)
+    for(johnny = my_users; johnny->name; johnny++)
     {
-	u = _TBL(user).alloc(johnny->nick);
+	u = _TBL(user).alloc(johnny->name);
 	u->ts = now;
 	strcpy(u->username, "service");
 	strcpy(u->host, "sux.vejnet.org");
-	strcpy(u->gcos, johnny->ircname);
-	u->server = me.serv_ptr;
+	strcpy(u->info, johnny->ircname);
+	u->server = me.table_ptr;
 	
-	send_out("NICK %s 0 %ld %s service sux.vejnet.org services.azzurra.org 0 0 :%s",
-		johnny->nick, now, johnny->umode, johnny->ircname);
-	send_out(":%s SJOIN %ld #sux +nrt  :%s", me.name, now, johnny->nick);
+	send_out("NICK %s 0 %ld %s service sux.vejnet.org %s 0 0 :%s",
+		johnny->name, now, johnny->umode, me.name, johnny->ircname);
+	send_out(":%s SJOIN %ld #sux +nrt  :%s", me.name, now, johnny->name);
 
 	add_user_to_channel(u, c, 0);
     }
@@ -338,7 +354,7 @@ gint m_nick(User *u, gint parc, gchar **parv)
 	if((u = _TBL(user).get(parv[1])))
 	{
 	    /* uh ? we already have this ? */
-	    g_error("new user %s already exists in hash table ..",
+	    g_critical("New user %s already exists in hash table ..",
 		    parv[1]);
 	    return 0;
 	}
@@ -354,7 +370,7 @@ gint m_nick(User *u, gint parc, gchar **parv)
 	g_return_val_if_fail(u->server != NULL, -1);
 	
 	/* XXX: nickip handling */
-	strcpy(u->gcos, parv[10]);
+	strcpy(u->info, parv[10]);
     }
     else
     {
@@ -362,9 +378,9 @@ gint m_nick(User *u, gint parc, gchar **parv)
 	g_return_val_if_fail(u != NULL, -1);
 
 	if(!_TBL(user).del(u))
-	    g_error("cannot delete user");
+	    g_critical("Cannot delete user %s", u->name);
 
-	strcpy(u->nick, parv[1]);
+	strcpy(u->name, parv[1]);
 	u->ts = strtoul(parv[2], NULL, 10);
 	_TBL(user).put(u);
     }
@@ -394,7 +410,7 @@ static void list_free_atoms(gpointer *data, GMemChunk *chunk)
 
 static gboolean remove_user_from_channel(Channel *c, User *u)
 {
-    GSList *johnny = c->members; /* walker */
+    register GSList *johnny = c->members; /* walker */
 
     while(johnny)
     {
@@ -405,9 +421,6 @@ static gboolean remove_user_from_channel(Channel *c, User *u)
 	    g_slist_free_1(johnny);
 
 	    g_return_val_if_fail(u->channels != NULL, -1);
-
-//	    g_fprintf(stderr, "rem %s -> %s\n",
-//		    u->nick, c->chname);
 
 	    if(c->members == NULL)
 	    {
@@ -420,9 +433,6 @@ static gboolean remove_user_from_channel(Channel *c, User *u)
 
 	johnny = g_slist_next(johnny);
     }
-
-    g_warning("user %s not found in channel %s (sux !)\n",
-	    u->nick, c->chname);
 
     return FALSE;
 }
@@ -585,12 +595,12 @@ gint m_motd(User *u, gint parc, gchar **parv)
  */
 gint m_server(User *u, gint parc, gchar **parv)
 {
-    if(u == NULL)
+    if(u == me.uplink)
     {
 	gchar *name = parv[1];
 	
 	/* my uplink */
-	if(uplink.ptr != _TBL(user).get(name))
+	if(me.uplink != _TBL(user).get(name))
 	{
 	    g_critical("No C/N Lines");
 
@@ -611,25 +621,22 @@ gint m_server(User *u, gint parc, gchar **parv)
 	    return 0;
 	}
 
-	u = me.uplink = uplink.ptr;
+	u = me.uplink;
 
-	strcpy(u->gcos, parv[3]);
+	strcpy(u->info, parv[3]);
 	
 	if(uplink.ping_tag)
 	{
-	    g_source_del(&uplink.ping_tag);
-//	    uplink.ping_tag = NULL;
+	    g_source_del(uplink.ping_tag);
+	    uplink.ping_tag = NULL;
 	}
 
-	g_timeout_source_add(PING_FREQUENCY, (GSourceFunc) send_ping, u);
+	g_timeout_source_add(10 seconds, (GSourceFunc) send_ping, u);
 
-//	g_mutex_lock(me.time_mutex);
 	uplink.firsttime = NOW;
-//	g_mutex_unlock(me.time_mutex);
 
-	send_out(":%s GNOTICE :Link with %s[%s] established, states: TS",
-		me.name, u->nick, SUX_UPLINK_HOST);
-	
+	send_out(":%s GNOTICE :Link with %s[unknown@%s] established, states: TS",
+		me.name, u->name, me.hostip);
 	send_out("BURST");
 
 	send_nick_burst();
@@ -645,7 +652,7 @@ gint m_server(User *u, gint parc, gchar **parv)
 
 	u = _TBL(user).alloc(parv[1]);
 	u->mode = atoi(parv[2]);
-	strcpy(u->gcos, parv[3]);
+	strcpy(u->info, parv[3]);
     }
 
     return 0;
@@ -711,9 +718,7 @@ gint m_stats(User *u, gint parc, gchar **parv)
 	    {
 		time_t now;
 		
-//		g_mutex_lock(me.time_mutex);
 		now = NOW - me.boot;
-//		g_mutex_unlock(me.time_mutex);
 
 		send_out(rpl_str(RPL_STATSUPTIME), me.name, parv[0],
 			now / 86400, (now / 3600) % 24, (now / 60) % 60, now % 60);
@@ -762,8 +767,6 @@ gint m_squit(User *u, gint parc, gchar **parv)
  */
 gint m_pass(User *u, gint parc, gchar **parv)
 {
-    g_return_val_if_fail(me.uplink == NULL, -1);
-
     g_strlcpy(uplink.passwd, parv[1], sizeof(uplink.passwd));
     
     return 0;
@@ -782,9 +785,7 @@ gint m_svinfo(User *u, gint parc, gchar **parv)
     time_t deltat, theirtime, now;
     guint their_ts_ver, their_ts_min_ver;
 
-//    g_mutex_lock(me.time_mutex);
     now = NOW;
-//    g_mutex_unlock(me.time_mutex);
 
     g_return_val_if_fail(parc > 4, -1);
 
@@ -794,14 +795,14 @@ gint m_svinfo(User *u, gint parc, gchar **parv)
 
     if(deltat > 45)
     {
-	g_critical("Link %s dropped, excessive TS delta (%ld)", u->nick, deltat);
+	g_critical("Link %s dropped, excessive TS delta (%ld)", u->name, deltat);
 
 	return 0;
     }
     else if(deltat > 15)
     {
 	g_warning("Link %s notable TS delta (my TS=%ld, their TS=%ld, delta=%ld",
-		u->nick, now, theirtime, deltat);
+		u->name, now, theirtime, deltat);
     }
 
     their_ts_ver = atoi(parv[1]);
@@ -820,7 +821,7 @@ gint m_svinfo(User *u, gint parc, gchar **parv)
 
 G_INLINE_FUNC gint cm_compare(ChanMember *cm, gchar *s)
 {
-    return mycmp(s, cm->u->nick);
+    return mycmp(s, cm->u->name);
 }
 
 G_INLINE_FUNC gint ch_compare(SLink *lp, gchar *s)
@@ -909,9 +910,7 @@ static void add_user_to_channel(User *u, Channel *c, guint flags)
     u->channels = g_slist_prepend(u->channels, lp);
     c->members = g_slist_prepend(c->members, cm);
 
-//    g_fprintf(stderr, "add %s -> %s\n", u->nick, c->chname);
 }
-
 
 /*
  * m_join 
@@ -978,7 +977,6 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
 	c->ts = ts;
 
 	u = _TBL(user).get(s);
-	//g_printf("Sjoin(3) for user %s\n", u->nick);
 
 	add_user_to_channel(_TBL(user).get(s), c, 0);
 
@@ -987,23 +985,29 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
     else
     {
 	/* server sjoin with modes and users */
-	gint args;
 
 	modes = parv[3];
-	
-	c->ts = ts;
-	c->bans = NULL;
-	c->members = NULL;
-	if((args = compile_mode(&mode, modes, parc, parv)) < 0)
-	{
-	    g_warning("failed mode compilation on %s", modes);
-	    memset(&c->mode, 0x0, sizeof(Mode));
-	    return 0;
-	}
-	c->mode = mode;
-	users = parv[4 + args];
 
-	//g_printf("Sjoin(%d) for users: ", parc);
+	if(*modes != '0')
+	{
+	    gint args = 0;
+	    c->ts = ts;
+	    c->bans = NULL;
+	    c->members = NULL;
+
+	    if((args = compile_mode(&mode, modes, parc, parv)) < 0)
+	    {
+		g_warning("Failed mode compilation on `%s', channel desynched !", modes);
+		memset(&c->mode, 0x0, sizeof(Mode));
+	    }
+	    c->mode = mode;
+	    users = parv[4 + args];
+	}
+	else
+	{
+	    users = parv[4];
+	}
+
     }
 
     g_return_val_if_fail(users != NULL, -1);
@@ -1027,19 +1031,11 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
 	while(*s == '@' || *s == '+')
 	    s++;
 	
-	//g_printf("%s", s);
 	if(!g_slist_find_custom(c->members, s, (GCompareFunc) cm_compare))
 	{
 	    add_user_to_channel(_TBL(user).get(s), c, fl);
 	}
-	else
-	{
-	    //g_printf("*");
-	}
     }
-    //g_printf("\n");
-    
-    //g_strfreev(users_arr);
 
     return 1;
 }
@@ -1047,8 +1043,6 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
 gint m_capab(User *u, gint parc, gchar **parv)
 {
     gint i;
-
-    g_return_val_if_fail(me.uplink == NULL, -1);
 
     for(i = 1; i < parc; i++)
     {
@@ -1076,10 +1070,10 @@ gint m_lusers(User *u, gint parc, gchar **parv)
     g_return_val_if_fail(u != NULL, -1);
     
     send_out(rpl_str(RPL_LUSERCHANNELS),
-	    me.name, u->nick, _TBL(channel).count());
+	    me.name, u->name, _TBL(channel).count());
     
     send_out(rpl_str(RPL_GLOBALUSERS),
-	    me.name, u->nick, _TBL(user).count());
+	    me.name, u->name, _TBL(user).count());
 
     return 0;
 }
@@ -1112,8 +1106,8 @@ gint m_whois(User *u, gint parc, gchar **parv)
     }
 
     send_out(rpl_str(RPL_WHOISUSER), me.name,
-	    parv[0], target->nick, target->username,
-	    target->host, target->gcos);
+	    parv[0], target->name, target->username,
+	    target->host, target->info);
 
     mlen = strlen(me.name) + strlen(parv[0]) + 6 + strlen(nick);
     for(len = 0, *chanbuf = '\0', johnny = target->channels;
@@ -1141,7 +1135,7 @@ gint m_whois(User *u, gint parc, gchar **parv)
     }
 
     send_out(rpl_str(RPL_WHOISSERVER),
-	    me.name, parv[0], nick, target->server->nick, target->server->gcos);
+	    me.name, parv[0], nick, target->server->name, target->server->info);
 
     send_out(rpl_str(RPL_ENDOFWHOIS),
 	    me.name, parv[0], nick);
@@ -1163,16 +1157,14 @@ gint m_burst(User *u, gint parc, gchar **parv)
 	/* this is an EOB */
 	time_t synch_time;
 	
-//	g_mutex_lock(me.time_mutex);
 	synch_time = NOW - uplink.firsttime;
-//	g_mutex_unlock(me.time_mutex);
 
 	uplink.flags &= ~FLAGS_EOBRECV;
 	if(uplink.flags & (FLAGS_SOBSENT|FLAGS_BURST))
 	    return 0;
 	
 	send_out(":%s GNOTICE :synch to %s in %ld sec%s at %s sendq",
-		me.name, u->nick, synch_time, synch_time == 1 ? "" : "s", parv[1]);
+		me.name, u->name, synch_time, synch_time == 1 ? "" : "s", parv[1]);
     }
     else
     {
@@ -1226,15 +1218,24 @@ gint m_rs(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
+
 gint m_time(User *u, gint parc, gchar **parv)
 {
-    DUMMY
+    gchar timebuf[25];
+    
+    ctime_r(&NOW, timebuf);
+    
+    send_out(rpl_str(RPL_TIME), me.name, parv[0], me.name, timebuf);
+
+    return 0;
 }
+
 gint m_admin(User *u, gint parc, gchar **parv)
 {
-    DUMMY
-}
-gint m_gnotice(User *u, gint parc, gchar **parv)
-{
-    DUMMY
+    send_out(rpl_str(RPL_ADMINME), me.name, parv[0], me.name);
+    send_out(rpl_str(RPL_ADMINLOC1), me.name, parv[0], SUX_MODULE);
+    send_out(rpl_str(RPL_ADMINLOC2), me.name, parv[0], "Release " SUX_RELEASE);
+    send_out(rpl_str(RPL_ADMINEMAIL), me.name, parv[0], "coded by vjt@users.sf.net");
+
+    return 0;
 }
