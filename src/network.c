@@ -87,6 +87,52 @@ GIOChannel *connect_server(gchar *host, guint port)
     return(ret);
 }
 
+GSource *g_input_add(GIOChannel *handle, GIOCondition cond, GIOFunc callback)
+{
+    GSource *gs;
+
+    gs = g_io_create_watch(handle, cond);
+    g_source_set_priority(gs, G_PRIORITY_DEFAULT);
+    g_source_set_callback(gs, (GSourceFunc) callback, NULL, NULL);
+
+    g_mutex_lock(me.ctx_mutex);
+    g_source_attach(gs, me.ctx);
+    g_mutex_unlock(me.ctx_mutex);
+
+    g_source_unref(gs);
+
+    return gs;
+}
+
+GSource *g_timeout_source_add(guint interval, GSourceFunc callback, gpointer user_data)
+{
+    GSource *gs;
+
+    gs = g_timeout_source_new(interval);
+    g_source_set_priority(gs, G_PRIORITY_DEFAULT);
+    g_source_set_callback(gs, (GSourceFunc) callback, user_data, NULL);
+
+    g_mutex_lock(me.ctx_mutex);
+    g_source_attach(gs, me.ctx);
+    g_mutex_unlock(me.ctx_mutex);
+    
+    g_source_unref(gs);
+
+    return gs;
+}
+
+gboolean g_source_del(GSource *gs)
+{
+    g_return_val_if_fail(gs != NULL, FALSE);
+    
+    g_mutex_lock(me.ctx_mutex);
+    g_source_destroy(gs);
+    g_source_unref(gs);
+    g_mutex_unlock(me.ctx_mutex);
+
+    return TRUE;
+}
+
 gboolean net_shutdown(GIOChannel *source)
 {
     GError *err = NULL;

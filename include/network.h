@@ -15,4 +15,8 @@ void setup_netbuf(void);
 
 void send_out(gchar *, ...) G_GNUC_PRINTF(1, 2);
 
+GSource *g_input_add(GIOChannel *, GIOCondition, GIOFunc);
+GSource *g_timeout_source_add(guint, GSourceFunc, gpointer);
+gboolean g_source_del(GSource *);
+
 #endif

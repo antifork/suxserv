@@ -39,17 +39,14 @@ typedef struct mydata
     GMutex *writebuf_mutex;
     GMutex *me_mutex;
 
+    GAsyncQueue *sig_queue;
+
     time_t now;
 } MyData;
 
 EXTERN MyData me;
 
 #define NOW			(me.now)
-
-EXTERN gboolean net_thr_running;
-EXTERN gboolean parse_thr_running;
-
-EXTERN GSource *g_input_add(GIOChannel *, GIOCondition, GIOFunc);
 
 #undef EXTERN
 #endif

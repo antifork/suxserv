@@ -24,13 +24,13 @@ static struct
     gchar name[PASSWDLEN + 1];
     User *ptr;
 
-    guint ping_tag;
+    GSource *ping_tag;
     time_t firsttime;
     gshort flags;
     
 } uplink;
 
-static gboolean ping_timeout(User *u)
+static gboolean ping_timeout(void)
 {
     /* ping timeout */
     g_critical("Ping Timeout (%d usecs)", PING_FREQUENCY);
@@ -40,12 +40,12 @@ static gboolean ping_timeout(User *u)
 
 static gboolean send_ping(User *u)
 {
-    if(uplink.ping_tag != -1)
+    if(uplink.ping_tag)
     {
-	return ping_timeout(u);
+	return ping_timeout();
     }
 
-    uplink.ping_tag = g_timeout_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, u);
+    uplink.ping_tag = g_timeout_source_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
 
     send_out("PING :%s", u->nick);
 
@@ -59,7 +59,7 @@ void nego_start(void)
     send_out("SVINFO 5 3 0 :%lu", NOW);
     send_out("SERVER %s 1 :%s", me.name, me.info);
 
-    uplink.ping_tag = g_timeout_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
+    uplink.ping_tag = g_timeout_source_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
     uplink.ptr = _TBL(user).alloc(SUX_UPLINK_NAME);
 }
 
@@ -146,10 +146,10 @@ gint m_pong(User *u, gint parc, gchar **parv)
 {
     g_return_val_if_fail(u != NULL, -1);
 
-    if(uplink.ping_tag != -1)
+    if(uplink.ping_tag)
     {
-	g_return_val_if_fail(g_source_remove(uplink.ping_tag) == TRUE, -1);
-	uplink.ping_tag = -1;
+	g_return_val_if_fail(g_source_del(uplink.ping_tag) == TRUE, -1);
+	uplink.ping_tag = NULL;
 	return 0;
     }
 
@@ -486,9 +486,12 @@ gint m_server(User *u, gint parc, gchar **parv)
 
 	strcpy(u->gcos, parv[3]);
 	
-	g_source_remove(uplink.ping_tag);
-	uplink.ping_tag = -1;
-	g_timeout_add(PING_FREQUENCY, (GSourceFunc) send_ping, u);
+	if(uplink.ping_tag)
+	{
+	    g_source_del(uplink.ping_tag);
+	    uplink.ping_tag = NULL;
+	}
+	g_timeout_source_add(PING_FREQUENCY, (GSourceFunc) send_ping, u);
 
 	uplink.firsttime = NOW;
 	send_out(":%s GNOTICE :Link with %s[%s] established, states: TS",

@@ -10,14 +10,14 @@
 
 extern gint errno;
 
-static void signal_handler(gint);
-static void setup_signals(void);
 static void setup_allocators(void);
 static void setup_fds(void);
 static void setup_mutexes(void);
+static void setup_signals(void);
 
 static int start_net_thread(void);
 static int start_parse_thread(void);
+static int start_sig_thread(void);
 
 gint main(gint argc, gchar **argv)
 {
@@ -38,9 +38,10 @@ gint main(gint argc, gchar **argv)
 
     if((me.handle = connect_server(me.host, me.port)))
     {
-	GThread *net_thr, *parse_thr;
+	GThread *net_thr, *parse_thr, *sig_thr;
 	GError *err = NULL;
 	pid_t pid = 0 ;//fork();
+	gint *received_signal = NULL;
 
 	switch(pid)
 	{
@@ -48,29 +49,41 @@ gint main(gint argc, gchar **argv)
 		/* child */		
 		g_thread_init(NULL);
 		
-		setup_signals();
 		setup_allocators();
 		setup_netbuf();
 		setup_tables();
 		setup_fds();
 		setup_mutexes();
+		setup_signals();
 		
-		net_thr = g_thread_create((GThreadFunc)start_net_thread, NULL, TRUE, &err);
+		log_set_irc_wrapper();
+		
+		net_thr = g_thread_create((GThreadFunc)start_net_thread, NULL, FALSE, &err);
 		if(net_thr == NULL)
 		{
-		    g_critical(err->message);
-		    return 0;
+		    exit(-1);
 		}
 
-		parse_thr = g_thread_create((GThreadFunc)start_parse_thread, NULL, TRUE, &err);
+		parse_thr = g_thread_create((GThreadFunc)start_parse_thread, NULL, FALSE, &err);
 		if(parse_thr == NULL)
 		{
-		    g_critical(err->message);
-		    return 0;
+		    exit(-1);
 		}
 
-		g_thread_join(net_thr);
-		g_thread_join(parse_thr);
+		sig_thr = g_thread_create((GThreadFunc)start_sig_thread, NULL, FALSE, &err);
+		if(sig_thr == NULL)
+		{
+		    exit(-1);
+		}
+
+		received_signal = g_async_queue_pop(me.sig_queue);
+		if(*received_signal != 0)
+		{
+		    g_critical("Received signal %d, quitting", *received_signal);
+		}
+
+		exit(0);
+
 		return 0;
 
 	    case -1:
@@ -93,36 +106,12 @@ gint main(gint argc, gchar **argv)
     return -1;
 }
 
-GSource *g_input_add(GIOChannel *handle, GIOCondition cond, GIOFunc callback)
-{
-    GSource *gs;
-
-    gs = g_io_create_watch(handle, cond);
-    g_source_set_priority(gs, G_PRIORITY_DEFAULT);
-    g_source_set_callback(gs, (GSourceFunc) callback, NULL, NULL);
-
-    g_mutex_lock(me.ctx_mutex);
-    g_source_attach(gs, me.ctx);
-    g_mutex_unlock(me.ctx_mutex);
-
-    g_source_unref(gs);
-
-    return gs;
-}
-    
-static void signal_handler(gint sig)
-{
-    g_critical("Received signal %d (%s), quitting", sig, g_strsignal(sig));
-    g_critical_syslog("Received signal %d (%s), quitting", sig, g_strsignal(sig));
-}
-
 static void setup_signals(void)
 {
-    signal(SIGINT, signal_handler);
-    signal(SIGHUP, signal_handler);
-    signal(SIGQUIT, signal_handler);
-    signal(SIGTERM, signal_handler);
-    signal(SIGPIPE, SIG_IGN);
+    sigset_t signal_set;
+    
+    sigfillset(&signal_set);
+    pthread_sigmask(SIG_BLOCK, &signal_set, NULL);
 }
 
 static void setup_allocators(void)
@@ -154,24 +143,8 @@ static void setup_mutexes(void)
     me.writebuf_mutex = g_mutex_new();
 
     me.time_mutex = g_mutex_new();
-}
 
-static void g_main_context_poll(GMainContext *ctx, gint timeout,
-	gint priority, GPollFD *fds, gint n_fds)
-{
-    GPollFunc poll_func;
-    
-    g_mutex_lock(me.ctx_mutex);
-    poll_func = g_main_context_get_poll_func(ctx);
-    g_mutex_unlock(me.ctx_mutex);
-
-    if(n_fds || timeout != 0)
-    {
-	if((*poll_func)(fds, n_fds, timeout) < 0 && errno != EINTR)
-	{
-	    g_errno_critical("poll()");
-	}
-    }
+    me.sig_queue = g_async_queue_new();
 }
 
 static int start_net_thread(void)
@@ -180,8 +153,6 @@ static int start_net_thread(void)
     gint timeout;
     gboolean some_ready;
     gint nfds, allocated_nfds = 4;
-
-    log_set_irc_wrapper_net_thr();
 
     g_mutex_lock(me.ctx_mutex);
     me.ctx = g_main_context_new();
@@ -197,8 +168,6 @@ static int start_net_thread(void)
     me.err_tag = g_input_add(me.handle, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 	    (GIOFunc) net_err_callback);
 
-    net_thr_running = TRUE;
-    
     nego_start();
     
     do
@@ -222,7 +191,14 @@ static int start_net_thread(void)
 	some_ready = g_main_context_prepare(me.ctx, &max_priority);
 	nfds = g_main_context_query(me.ctx, max_priority, &timeout, me.fds, allocated_nfds);
 
-	g_main_context_poll(me.ctx, timeout, max_priority, me.fds, nfds);
+	if(nfds || timeout != 0)
+	{
+	    if(poll((struct pollfd *)me.fds, nfds, timeout) < 0 && errno != EINTR)
+	    {
+		g_errno_critical("poll()");
+	    }
+	}
+
 	g_main_context_check(me.ctx, max_priority, me.fds, nfds);
 	g_main_context_dispatch(me.ctx);
 
@@ -230,20 +206,7 @@ static int start_net_thread(void)
 
 	g_mutex_lock(me.ctx_mutex);
 
-    } while(net_thr_running);
-
-    net_shutdown(me.handle);
-
-    g_source_destroy(me.recv_tag);
-    g_source_destroy(me.err_tag);
-    if(me.send_tag != NULL)
-    {
-        g_source_destroy(me.send_tag);
-    }
-
-    g_io_channel_unref(me.handle);
-
-    g_main_context_unref(me.ctx);
+    } while(TRUE);
 
     return 0;
 }
@@ -252,12 +215,8 @@ static int start_parse_thread(void)
 {
     gchar **strings;
     gint i, count;
-	
-    log_set_irc_wrapper_parse_thr();
 
-    parse_thr_running = TRUE;
-    
-    while(parse_thr_running)
+    while(TRUE)
     {
 	g_mutex_lock(me.readbuf_mutex);
 	if(!me.recvQ->len)
@@ -290,5 +249,34 @@ static int start_parse_thread(void)
 	g_strfreev(strings);
     }
 
+    g_thread_exit(NULL);
+
     return 0;
+}
+
+static int start_sig_thread(void)
+{
+    sigset_t signal_set;
+    gint *sig = g_new0(gint, 1);
+
+    for(;;)
+    {
+	sigfillset(&signal_set);
+	sigwait(&signal_set, sig);
+
+	switch(*sig)
+	{
+	    case SIGTERM:
+	    case SIGQUIT:
+	    case SIGHUP:
+	    case SIGINT:
+		g_async_queue_push(me.sig_queue, sig);
+		g_thread_exit(NULL);
+
+		break;
+	    case SIGPIPE:
+	    default:
+		break;
+	}
+    }
 }

@@ -17,5 +17,6 @@
 #include <syslog.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <sys/poll.h>
 
 #endif /* __os_h__ */

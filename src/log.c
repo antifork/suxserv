@@ -24,21 +24,23 @@ void __sux_irc_log_handler_critical_errno(const gchar *log_domain, GLogLevelFlag
 	const gchar *message)
 {
     G_CONST_RETURN gchar *errstr;
+    gint *zero = g_new0(gint, 1);
     
     errstr = g_strerror(errno);
     send_out(":%s GLOBOPS :[%s] Critical: %s (%s)",
 	    me.name, log_domain, message, errstr);
     send_out("SQUIT %s :%s (%s)", me.name, message, errstr);
 
-    net_thr_running = FALSE;
+    g_async_queue_push(me.sig_queue, zero);
 }
 
 void __sux_irc_log_handler_critical_syslog(const gchar *log_domain, GLogLevelFlags log_level,
 	const gchar *message)
 {
     syslog(LOG_NOTICE, "%s: Critical: %s", log_domain, message);
+    gint *zero = g_new0(gint, 1);
 
-    net_thr_running = FALSE;
+    g_async_queue_push(me.sig_queue, zero);
 }
 
 void __sux_irc_log_handler_generic(const gchar *log_domain, GLogLevelFlags log_level,
@@ -63,9 +65,9 @@ void __sux_irc_log_handler_generic(const gchar *log_domain, GLogLevelFlags log_l
 
     if(log_level & G_LOG_LEVEL_CRITICAL)
     {
+	gint *zero = g_new0(gint, 1);
 	send_out("SQUIT %s :%s", me.name, message);
-
-	net_thr_running = FALSE;
+	g_async_queue_push(me.sig_queue, zero);
     }
 }
 
@@ -111,41 +113,7 @@ void __sux_tty_log_handler_generic(const gchar *log_domain, GLogLevelFlags log_l
     }
 }
 
-void __sux_irc_log_handler_parser_stop(const gchar *log_domain, GLogLevelFlags log_level,
-	const gchar *message)
-{
-    parse_thr_running = FALSE;
-}
-
-void __sux_irc_log_handler_parser_ign(const gchar *log_domain, GLogLevelFlags log_level,
-	const gchar *message)
-{
-}
-
-void __sux_irc_log_handler_parser(const gchar *log_domain, GLogLevelFlags log_level,
-	const gchar *message)
-{
-    if(log_level & G_LOG_LEVEL_CRITICAL)
-    {
-	parse_thr_running = FALSE;
-    }
-}
-
-void log_set_irc_wrapper_parse_thr(void)
-{
-    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_ERROR | G_LOG_LEVEL_ERRNO_CRITICAL |
-	    G_LOG_LEVEL_SYSLOG_CRITICAL | G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION,
-	    (GLogFunc) __sux_irc_log_handler_parser_stop, NULL);
-
-    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_SYSLOG_MESSAGE | G_LOG_FLAG_RECURSION,
-	    (GLogFunc) __sux_irc_log_handler_parser_ign, NULL);
-    
-    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING | G_LOG_LEVEL_CRITICAL |
-	    G_LOG_LEVEL_MESSAGE | G_LOG_LEVEL_INFO | G_LOG_LEVEL_DEBUG | G_LOG_FLAG_RECURSION, 
-	    (GLogFunc) __sux_irc_log_handler_parser, NULL);
-}
-
-void log_set_irc_wrapper_net_thr(void)
+void log_set_irc_wrapper(void)
 {
     openlog("sux", LOG_NDELAY | LOG_NOWAIT | LOG_PID, LOG_DAEMON);
     
