@@ -162,6 +162,8 @@ gint m_notice(gint parc, gchar **parv)
 gint m_quit(gint parc, gchar **parv)
 {
     User *u = _TBL(user).get(parv[0]);
+
+    g_return_val_if_fail(u != NULL, 0);
     
     _TBL(user).del(u);
     _TBL(user).destroy(u);
@@ -187,8 +189,9 @@ gint m_motd(gint parc, gchar **parv)
 	send_out(rpl_str(RPL_MOTD), me.name, parv[0], motd[i]);
     }
     for (i = 0; i < 20; i++)
-    {
-	send_out(rpl_str(RPL_MOTD), me.name, parv[0], "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    {	
+	send_out(rpl_str(RPL_MOTD), me.name, parv[0],
+		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     }
     send_out(rpl_str(RPL_ENDOFMOTD), me.name, parv[0]);
     return 0;
@@ -213,15 +216,18 @@ gint m_info(gint parc, gchar **parv)
     }
     for (i = 0; i < 20; i++)
     {
-	send_out(rpl_str(RPL_INFO), me.name, parv[0], "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+	send_out(rpl_str(RPL_INFO), me.name, parv[0],
+		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     }
     send_out(rpl_str(RPL_ENDOFINFO), me.name, parv[0]);
     return 0;
 }
+
 gint m_stats(gint parc, gchar **parv)
 {
     DUMMY
 }
+
 gint m_version(gint parc, gchar **parv)
 {
     send_out(rpl_str(RPL_VERSION),
@@ -240,15 +246,110 @@ gint m_umode(gint parc, gchar **parv)
 {
     DUMMY
 }
+
+/*
+ * m_svinfo 
+ *       parv[0] = sender prefix 
+ *       parv[1] = TS_CURRENT for the server 
+ *       parv[2] = TS_MIN for the server 
+ *       parv[3] = server is standalone or connected to non-TS only 
+ *       parv[4] = server's idea of UTC time
+ */
 gint m_svinfo(gint parc, gchar **parv)
 {
-    DUMMY
+    time_t deltat, tmptime, theirtime;
+
+    g_return_val_if_fail(parc > 4, 0);
+    
+    tmptime = time(NULL);
+    theirtime = atol(parv[4]);
+    deltat = abs(theirtime - tmptime);
+
+    g_message("Linked with %s, TS protocol version: %s",
+	    parv[0], parv[1]);
+
+    if(deltat > 45)
+    {
+	g_warning("Link %s dropped, excessive TS delta (%ld)", parv[0], deltat);
+	send_out(":%s SQUIT %s :excessive TS delta (%ld)",
+		me.name, parv[0], deltat);
+	STOP_RUNNING();
+    }
+    else if(deltat > 15)
+    {
+	g_warning("Link %s notable TS delta (my TS=%ld, their TS=%ld, delta=%ld",
+		parv[0], tmptime, theirtime, deltat);
+    }
+
+    return 0;
 }
 
 static gint cm_compare(ChanMember *cm, gchar *s)
 {
     return mycmp(s, cm->u->nick);
 }
+
+static gboolean compile_mode(Mode *m, gchar *s, gint parc, gchar **parv)
+{
+    gint args = 0;
+
+    memset(m, 0x0, sizeof(Mode));
+    
+    while(*s)
+    {
+	switch(*(s++))
+	{
+	    case 'i':
+		m->mode |= MODE_INVITEONLY;
+		break;
+	    case 'n':
+		m->mode |= MODE_NOPRIVMSGS;
+		break;
+	    case 'p':
+		m->mode |= MODE_PRIVATE;
+		break;
+	    case 's':
+		m->mode |= MODE_SECRET;
+		break;
+	    case 'm':
+		m->mode |= MODE_MODERATED;
+		break;
+	    case 't':
+		m->mode |= MODE_TOPICLIMIT;
+		break;
+	    case 'r':
+		m->mode |= MODE_REGISTERED;
+		break;
+	    case 'R':
+		m->mode |= MODE_REGONLY;
+		break;
+	    case 'M':
+		m->mode |= MODE_MODREG;
+		break;
+	    case 'c':
+		m->mode |= MODE_NOCOLOR;
+		break;
+	    case 'd':
+		m->mode |= MODE_NONICKCHG;
+		break;
+	    case 'k':
+		strncpy(m->key, parv[4 + args], KEYLEN + 1);
+		args++;
+		if (parc < 5 + args)
+		    return FALSE;
+		break;
+	    case 'l':
+		m->limit = atoi(parv[4 + args]);
+		args++;
+		if (parc < 5 + args)
+		    return FALSE;
+		break;
+	}
+    }
+
+    return TRUE;
+}
+
 /*
  * m_sjoin 
  * parv[0] - sender 
@@ -260,7 +361,6 @@ static gint cm_compare(ChanMember *cm, gchar *s)
 gint m_sjoin(gint parc, gchar **parv)
 {
     gint ts;
-    gint args = 0;
     gchar *channel;
     gchar *users;
     gchar *modes;
@@ -272,13 +372,7 @@ gint m_sjoin(gint parc, gchar **parv)
     
     if(parc < 5)
     {
-	gchar buf[512];
-
-	memset(buf, 0x0, sizeof(buf));
-	for(i = 0; i < parc; i++)
-	    strncat(buf, parv[i], sizeof(buf));
-	    
-	g_warning("received SJOIN with less than 5 params (%d): %s", parc, buf);
+	g_warning("received SJOIN with less than 5 params (%d)", parc);
 	return 0;
     }
     
@@ -293,66 +387,18 @@ gint m_sjoin(gint parc, gchar **parv)
 	c->ts = ts;
 	c->bans = NULL;
 	c->users = NULL;
+	if(compile_mode(&mode, modes, parc, parv) == FALSE)
+	{
+	    g_warning("failed mode compilation on %s", modes);
+	    memset(&c->mode, 0x0, sizeof(Mode));
+	    return 0;
+	}
+	c->mode = mode;
     }
     else if(c->ts != ts)
     {
 	c->ts = ts;
     }
-
-    memset(&mode, 0x0, sizeof(mode));
-    
-    while(*modes)
-    {
-	switch(*(modes++))
-	{
-	    case 'i':
-		mode.mode |= MODE_INVITEONLY;
-		break;
-	    case 'n':
-		mode.mode |= MODE_NOPRIVMSGS;
-		break;
-	    case 'p':
-		mode.mode |= MODE_PRIVATE;
-		break;
-	    case 's':
-		mode.mode |= MODE_SECRET;
-		break;
-	    case 'm':
-		mode.mode |= MODE_MODERATED;
-		break;
-	    case 't':
-		mode.mode |= MODE_TOPICLIMIT;
-		break;
-	    case 'r':
-		mode.mode |= MODE_REGISTERED;
-		break;
-	    case 'R':
-		mode.mode |= MODE_REGONLY;
-		break;
-	    case 'M':
-		mode.mode |= MODE_MODREG;
-		break;
-	    case 'c':
-		mode.mode |= MODE_NOCOLOR;
-		break;
-	    case 'd':
-		mode.mode |= MODE_NONICKCHG;
-		break;
-	    case 'k':
-		strncpy(mode.key, parv[4 + args], KEYLEN + 1);
-		args++;
-		if (parc < 5 + args)
-		    return 0;
-		break;
-	    case 'l':
-		mode.limit = atoi(parv[4 + args]);
-		args++;
-		if (parc < 5 + args)
-		    return 0;
-		break;
-	}
-    }
-    c->mode = mode;
 
     users_arr = g_strsplit(users, " ", 0);
     for(i = 0; users_arr[i] != NULL; i++)
