@@ -1,7 +1,6 @@
 #ifndef __main_h__
 #define __main_h__
 
-#include "dbuf.h"
 #define BUFSIZE 512
 #define IOBUFSIZE 32768
 
@@ -14,16 +13,17 @@
 typedef struct mydata
 {
     time_t boot;
-    int sock;
+    GIOChannel *handle;
+
     char host[HOSTLEN];
     char name[HOSTLEN];
     char info[INFOLEN];
     char pass[NICKLEN];
     char uplink[HOSTLEN];
     unsigned short port;
-    
-    struct DBuf sendQ;
-    struct DBuf recvQ;
+
+    int send_tag;
+
 } MyData;
 
 EXTERN MyData me;
