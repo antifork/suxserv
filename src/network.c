@@ -139,7 +139,7 @@ G_INLINE_FUNC GSource *g_source_add(GIOChannel *handle, GIOCondition cond, GIOFu
     g_source_attach(gs, me.ctx);
     g_mutex_unlock(me.ctx_mutex);
 
-    g_source_unref(gs);
+    //g_source_unref(gs);
 
     return gs;
 }
@@ -154,7 +154,7 @@ G_INLINE_FUNC GSource *g_source_add_nolock(GIOChannel *handle, GIOCondition cond
 
     g_source_attach(gs, me.ctx);
 
-    g_source_unref(gs);
+    //g_source_unref(gs);
 
     return gs;
 }
@@ -172,7 +172,7 @@ G_INLINE_FUNC GSource *g_timeout_source_add(guint interval, GSourceFunc callback
     g_source_attach(gs, me.ctx);
     g_mutex_unlock(me.ctx_mutex);
 
-    g_source_unref(gs);
+    //g_source_unref(gs);
 
     return gs;
 }
