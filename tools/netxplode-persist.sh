@@ -1,6 +1,6 @@
 #!/bin/sh
 
-mintimeout=30
+mintimeout=60
 timeout=$mintimeout
 
 test -n "$1" &&
@@ -14,7 +14,14 @@ test "$timeout" -lt $mintimeout &&
     timeout=$mintimeout
 }
 
-( while true; do
+(
+ trap "killall netxplode.pl ; exit" 1 2 3 15
+ while true; do
+	./netxplode.pl >/dev/null 2>&1 &
+	./netxplode.pl >/dev/null 2>&1 &
+	./netxplode.pl >/dev/null 2>&1 &
+	./netxplode.pl >/dev/null 2>&1 &
 	./netxplode.pl >/dev/null 2>&1 &
 	sleep $timeout;
-done ) &
+ done
+) &
