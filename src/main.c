@@ -95,19 +95,20 @@ gint main(gint argc, gchar **argv)
 
 	    default:
 		/* father */
-		g_message("services are daemonizing [pid %d]", pid);
+		g_message("Services are daemonizing [pid %d]", pid);
 		exit(EXIT_SUCCESS);
 
 		return 0;
 	}
     }
 
-    g_critical("cannot connect to server %s:%d", me.host, me.port);
+    g_critical("Cannot connect to server %s:%d", me.host, me.port);
 
     return -1;
 }
 
 static void signal_handler(gint sig)
 {
-    g_critical_syslog("received signal %d, quitting", sig);
+    g_critical("Received signal %d, quitting", sig);
+    g_critical_syslog("Received signal %d, quitting", sig);
 }
