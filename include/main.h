@@ -58,7 +58,7 @@ typedef struct mydata
 	info[INFOLEN],
 	pass[NICKLEN];
 
-    User *uplink;
+    User *uplink, *serv_ptr;
 	
     gushort port;
 
