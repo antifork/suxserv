@@ -57,9 +57,18 @@ GIOChannel *connect_server(gchar *host, guint port)
     if((ret = g_io_channel_unix_new(fd)))
     {
 	GError *err = NULL;
+	
 	g_io_channel_set_encoding(ret, NULL, &err);
+
+	if(err)
+	{
+	    g_critical(err->message);
+	    g_error_free(err);
+	}
+
 	g_io_channel_set_buffered(ret, TRUE);
 	g_io_channel_set_buffer_size(ret, IOBUFSIZE);
+
     }
 
     return(ret);
@@ -111,6 +120,7 @@ gint net_transmit(GIOChannel *handle, const gchar *data, gint len)
     if(status == G_IO_STATUS_ERROR)
     {
 	g_critical_syslog("Write error: %s", err->message);
+	g_error_free(err);
     }
 
     if(me.send_tag == -1)
@@ -149,6 +159,7 @@ gchar *net_receive(GIOChannel *handle, gsize *arnold) /* the terminator */
 
 	case G_IO_STATUS_ERROR:
 	    g_critical_syslog("Read error: %s", err->message);
+	    g_error_free(err);
 	    return NULL;
     
 	case G_IO_STATUS_EOF:
@@ -175,14 +186,19 @@ gboolean net_flush(GIOChannel *dest)
     {
 	case G_IO_STATUS_ERROR:
 	    g_critical_syslog("Write error: %s", err->message);
+	    g_error_free(err);
 	    return FALSE;
+
 	case G_IO_STATUS_NORMAL:
 	    g_source_remove(me.send_tag);
 	    me.send_tag = -1;
+	    /* fallthrough */
 	case G_IO_STATUS_AGAIN:
 	case G_IO_STATUS_EOF:
 	    return TRUE;
     }
+
+    g_error_free(err);
 
     return FALSE;
 }
@@ -205,7 +221,7 @@ gboolean net_shutdown(GIOChannel *source)
 		return TRUE;
 	}
     }
-
+    
     return FALSE;
 }
 
