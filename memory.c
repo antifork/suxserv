@@ -30,11 +30,14 @@ static gint fz[] =
 	  0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 8
 };
 
+#ifdef G_CAN_INLINE
+G_INLINE_FUNC
+#endif
 static gint
 get_fz (gint i)
 {
-    gint ret = 0;
-    gint cnt;
+    register gint ret = 0;
+    register gint cnt;
 
     /* optimize .. if we pass a -1, return it instead of cycling.. also because
      * the algorithm returns 0 when the first bit is 0 and when the bits are all
@@ -252,7 +255,10 @@ void SG_free(void *p, SEG_T *seg)
  * pointer into the SEG struct..
  */
 /* XXX: maybe put this function into SG_setup ?? */
-__inline void SG_set_err_func(void (*errfunc)(gchar *, ...), SEG_T *seg)
+#ifdef G_CAN_INLINE
+G_INLINE_FUNC
+#endif
+void SG_set_err_func(void (*errfunc)(gchar *, ...), SEG_T *seg)
 {
 	seg->errfunc = errfunc;
 	return;
@@ -261,8 +267,11 @@ __inline void SG_set_err_func(void (*errfunc)(gchar *, ...), SEG_T *seg)
 /*
  * a lame way to call free() :)
  */
-__inline void SG_destroy(SEG_T *seg)
+#ifdef G_CAN_INLINE
+G_INLINE_FUNC
+#endif
+void SG_destroy(SEG_T *seg)
 {
-	free((void *)seg);
+	g_free((void *)seg);
 	return;
 }
