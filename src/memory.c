@@ -109,24 +109,23 @@ static void realloc_segment (SEG_T *seg)
 	newseg.datasize = newseg.numpages * newseg.pagesize;
 	newseg.bitmapsize = newseg.numpages >> 3;
 	newseg.__firstfree = seg->numpages;
-#ifdef DEBUG
-	warn("realloc(%p->%p, %d) -> ", seg->__data, seg->__data + seg->datasize, newseg.datasize);
-#endif	
+
 	newseg.__data = g_realloc(seg->__data, newseg.datasize);
 	memset(newseg.__data + seg->datasize, 0x0, newseg.datasize - seg->datasize);
 	offset = (off_t)(newseg.__data - seg->__data);
 
-#ifdef DEBUG
-	warn("%p -> %p\n", newseg.__data, newseg.__data + newseg.datasize);
-	warn("realloc(%p, %d) -> ", seg->__bitmap, newseg.bitmapsize);
+#if 0
+	warn("realloc(%p->%p, %d) => (%p->%p)",
+		seg->__data, seg->__data + seg->datasize, newseg.datasize,
+		newseg.__data, newseg.__data + newseg.datasize);
 #endif
 	newseg.__bitmap = g_realloc((void*)seg->__bitmap, newseg.bitmapsize);
 	memset(newseg.__bitmap + seg->bitmapsize, 0x0, newseg.bitmapsize - seg->bitmapsize);
 
-#ifdef DEBUG
-	warn("%p\n", newseg.__bitmap);
-	warn("realloc data %d to %d, off_t: %ld\n", seg->datasize, newseg.datasize, offset);
-	warn("realloc bitmap %d to %d, off_t: %d\n", seg->bitmapsize, newseg.bitmapsize, 
+#if 0
+	warn("realloc(%p, %d) => %p", seg->__bitmap, newseg.bitmapsize, newseg.__bitmap);
+	warn("realloc data %d to %d, off_t: %ld", seg->datasize, newseg.datasize, offset);
+	warn("realloc bitmap %d to %d, off_t: %d", seg->bitmapsize, newseg.bitmapsize, 
 			((void*)seg->__bitmap) - ((void*)newseg.__bitmap));
 #endif
 	seg->numpages = newseg.numpages;
