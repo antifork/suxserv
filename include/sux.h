@@ -44,20 +44,30 @@ typedef struct user
     gshort motd, version;
 } User;
 
-#define CMODE_i 0x0001
-#define CMODE_m 0x0002
-#define CMODE_n 0x0004
-#define CMODE_p 0x0008
-#define CMODE_s 0x0010
-#define CMODE_t 0x0020
-#define CMODE_k 0x0040
-#define CMODE_l 0x0080
-#define CMODE_r 0x0100
-#define CMODE_j 0x0200
-#define CMODE_R 0x0400
-#define CMODE_c 0x0800
-#define CMODE_O 0x1000
-#define CMODE_M 0x2000
+#define	CHFL_CHANOP     0x0001	/* Channel operator */
+#define	CHFL_VOICE      0x0002	/* the power to speak */
+#define	CHFL_DEOPPED 	0x0004	/* deopped by us, modes need to be bounced */
+#define	CHFL_BAN	0x0008	/* ban channel flag */
+
+#define	MODE_CHANOP	CHFL_CHANOP
+#define	MODE_VOICE	CHFL_VOICE
+#define	MODE_DEOPPED  	CHFL_DEOPPED
+#define	MODE_PRIVATE  	0x00008
+#define	MODE_SECRET   	0x00010
+#define	MODE_MODERATED  0x00020
+#define	MODE_TOPICLIMIT 0x00040
+#define	MODE_INVITEONLY 0x00080
+#define	MODE_NOPRIVMSGS 0x00100
+#define	MODE_KEY	0x00200
+#define	MODE_BAN	0x00400
+#define	MODE_LIMIT	0x00800
+#define MODE_REGISTERED	0x01000
+#define MODE_REGONLY	0x02000
+#define MODE_NOCOLOR	0x04000
+#define MODE_OPERONLY   0x08000
+#define MODE_MODREG     0x10000
+#define MODE_LISTED	0x20000
+#define MODE_NONICKCHG	0x40000
 
 typedef struct
 {
@@ -66,16 +76,22 @@ typedef struct
    gchar key[KEYLEN + 1];
 } Mode;
 
+typedef struct chanmember
+{
+    User *u;
+    int flags;
+} ChanMember;
+
 typedef struct channel
 {
+   gchar chname[CHANNELLEN + 1];
    gchar topic[TOPICLEN + 1];
    gchar topic_nick[NICKLEN + 1];
    time_t topic_time;
-   time_t channelts;
+   time_t ts;
    Mode mode;
    GSList *bans;
-   GList *users;
-   gchar chname[CHANNELLEN + 1];
+   GSList *users;
 } Channel;
 
 #endif /* __sux_h__ */
