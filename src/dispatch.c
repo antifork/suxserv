@@ -6,6 +6,7 @@
 #include "log.h"
 #include "match.h"
 #include "network.h"
+#include "parse.h"
 
 #define DUMMY return 0;
 
@@ -241,6 +242,21 @@ static gboolean remove_user_from_channel(Channel *c, User *u)
 	    c->members = g_slist_remove_link(c->members, johnny);
 	    g_mem_chunk_free(_MPL(cmembers), johnny->data);
 	    g_slist_free_1(johnny);
+	    
+	    /* remove this channel from user chanlist */
+	    for(johnny = u->channels; johnny; johnny = g_slist_next(johnny))
+	    {
+		SLink *lp = (SLink *)johnny->data;
+		
+		if(lp->value.c == c)
+		{
+		    u->channels = g_slist_remove_link(u->channels, johnny);
+		    g_mem_chunk_free(_MPL(links), johnny->data);
+		    g_slist_free_1(johnny);
+
+		    break;
+		}
+	    }
 
 	    if(c->members == NULL)
 	    {
@@ -304,6 +320,7 @@ gint m_part(User *u, gint parc, gchar **parv)
     c = _TBL(channel).get(chname);
     g_return_val_if_fail(c != NULL, 0);
 
+    /* remove this user from the channel memberlist */
     g_return_val_if_fail(remove_user_from_channel(c, u) == TRUE, -1);
 
     return 1;
@@ -334,7 +351,11 @@ gint m_kick(User *u, gint parc, gchar **parv)
     return 0;
 }
 
-
+/*
+ * m_motd 
+ * parv[0] = sender prefix 
+ * parv[1] = servername
+ */
 gint m_motd(User *u, gint parc, gchar **parv)
 {
     gint i;
@@ -426,6 +447,11 @@ gint m_server(User *u, gint parc, gchar **parv)
     return 0;
 }
 
+/*
+ * m_info
+ * parv[0] = sender prefix 
+ * parv[1] = servername
+ */
 gint m_info(User *u, gint parc, gchar **parv)
 {
     gint i;
@@ -452,9 +478,36 @@ gint m_info(User *u, gint parc, gchar **parv)
     return 0;
 }
 
+/*
+ * 
+ * m_stats 
+ * parv[0] = sender prefix 
+ * parv[1] = statistics selector
+ * parv[2] = server name (current server defaulted, if omitted) 
+ */
 gint m_stats(User *u, gint parc, gchar **parv)
 {
-    DUMMY
+    gchar stat = parc > 1 ? parv[1][0] : '*';
+    
+    switch(stat)
+    {
+	case 'C':
+	case 'c':
+	    send_out(rpl_str(RPL_STATSCLINE), me.name, parv[0],
+		    SUX_UPLINK_NAME, SUX_UPLINK_PORT);
+	    break;
+
+	case 'M':
+	case 'm':
+	    send_message_count(parv[0]);
+	    break;
+
+	default:
+	    break;
+    }
+    send_out(rpl_str(RPL_ENDOFSTATS), me.name, parv[0], stat);
+
+    return 0;
 }
 
 gint m_version(User *u, gint parc, gchar **parv)
