@@ -6,6 +6,7 @@
 #include "parse.h"
 #include "network.h"
 #include "log.h"
+#include "h.h"
 
 extern gint errno;
 
@@ -25,7 +26,7 @@ gint main(gint argc, gchar **argv)
     strcpy(me.name, SUX_SERV_NAME);
     strcpy(me.pass, SUX_PASS);
     strcpy(me.info, SUX_VERSION);
-    strcpy(me.host, SUX_UPLINK);
+    strcpy(me.host, SUX_UPLINK_HOST);
 
     me.port = htons(6667);
 
@@ -66,10 +67,7 @@ gint main(gint argc, gchar **argv)
 		me.err_tag = g_io_add_watch(me.handle,
 			G_IO_ERR | G_IO_HUP | G_IO_NVAL, (GIOFunc) net_err_callback, NULL);
 
-		send_out("PASS %s :TS", me.pass);
-		send_out("CAPAB NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
-		send_out("SVINFO 5 3 0 :%lu", time(NULL));
-		send_out("SERVER %s 1 :%s", me.name, me.info);
+		nego_start();
 	
 		START_RUNNING();
 

@@ -18,8 +18,9 @@ typedef struct mydata
     gchar host[HOSTLEN],
     	name[HOSTLEN],
 	info[INFOLEN],
-	pass[NICKLEN],
-	uplink[HOSTLEN];
+	pass[NICKLEN];
+
+    User *uplink;
 	
     gushort port;
 

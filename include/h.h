@@ -38,5 +38,6 @@ extern gint  m_ns(User *, gint, gchar **);
 extern gint  m_os(User *, gint, gchar **);
 extern gint  m_rs(User *, gint, gchar **);
 extern gint  m_ms(User *, gint, gchar **);
+extern void  nego_start(void);
 
 #endif /* __h_h__ */
