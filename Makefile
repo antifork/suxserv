@@ -16,6 +16,7 @@ build:
 	
 $(ME): src/$(ME)
 	@ln -f src/$(ME) .
+	@ln -fs $(ME) a.out
 
 	@echo "********************************";
 	@echo "* suuuuuuuuuuuuuuuuuuuuuuuxxx! *";
