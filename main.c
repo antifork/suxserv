@@ -182,7 +182,7 @@ static void io_loop()
 	{
 	    if(FD_ISSET(me.sock, &read_set))
 	    {
-		while((count = read(me.sock, readbuf, IOBUFSIZE)) > 0)
+		while((count = recv(me.sock, readbuf, IOBUFSIZE, 0)) > 0)
 		{
 		    readbuf[count] = '\0';
 		    if(!dbuf_put(&me.recvQ, readbuf, count))
@@ -190,24 +190,24 @@ static void io_loop()
 		}
 		if(count < 0)
 		{
-		    io_error("read()", errno);
+		    io_error("recv()", errno);
 		}
 	    }
 	    if(FD_ISSET(me.sock, &write_set))
 	    {
 		while(DBufLength(&me.sendQ))
 		{
-		    char *p = dbuf_map(&me.sendQ, &count);
+		    const char *p = dbuf_map(&me.sendQ, &count);
 		    int w;
+
 		    if(count <= 0)
 		    {
 			break;
 		    }
-		    if((w = write(me.sock, p, count)) < 0)
+		    if((w = send(me.sock, p, count, 0)) < 0)
 		    {
-			io_error("write()", errno);
+			io_error("send()", errno);
 		    }
-
 		    dbuf_delete(&me.sendQ, w);
 
 		    if(w != count)
