@@ -5,15 +5,15 @@
 #include "parse.h"
 #include "match.h"
 
-static char *para[MAXPARA + 1];
-static char sender[HOSTLEN + 1];
+static gchar *para[MAXPARA + 1];
+static gchar sender[HOSTLEN + 1];
 /* XXX: LATAH
-static void remove_unknown(char *, char *);
+static void remove_unknown(gchar *, gchar *);
 */
 extern MyData me;
-extern User *find_client(char *);
+extern User *find_client(gchar *);
 %}
-struct Message { char *cmd; int (*func)(int, char **); unsigned int count; };
+struct Message { gchar *cmd; gint (*func)(gint, gchar **); guint count; };
 %%
 436, m_nickcoll, 0
 ADMIN, m_admin, 0
@@ -56,13 +56,13 @@ RS, m_rs, 0
  * NOTE: parse() should not be called recusively by any other functions!
  */
 
-int parse(char *buffer, char *bufend)
+gint parse(gchar *buffer)
 {
-    char *ch, *s;
-    int i;
+    gchar *ch, *s;
+    gint i, len = 0;
     struct Message *mptr;
 
-    //fprintf(stderr, "<: %s\n", buffer);
+    /* fprintf(stderr, "<: %s\n", buffer); */
     s = sender;
     *s = '\0';
     
@@ -151,9 +151,18 @@ int parse(char *buffer, char *bufend)
     s = strchr(ch, ' ');
     
     if (s)
+    {
         *s = '\0';
+	len = s++ - ch;
+    }
+    else
+    {
+	gchar *p = ch;
+	while(*p++)
+	    len++;
+    }
     
-    mptr = hash_get_cmd(ch, s++ - ch);
+    mptr = hash_get_cmd(ch, len);
     
     if (!mptr || !mptr->cmd) 
     {
@@ -202,7 +211,7 @@ int parse(char *buffer, char *bufend)
 }
 
 /* XXX: LATAH
-static void remove_unknown(char *sender, char *buffer)
+static void remove_unknown(gchar *sender, gchar *buffer)
 {
     / *
      * Do kill if it came from a server because it means there is a
@@ -210,7 +219,7 @@ static void remove_unknown(char *sender, char *buffer)
      * Tell opers about this. -Taner
      * /
     if (!strchr(sender, '.'))
-	send_out(":%s KILL %s :%s (%s(?)",
+	send_out(":%s KILL %s :%s (%s<-(?))",
 		me.name, sender, me.name, sender);
     else
     {
