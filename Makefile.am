@@ -1,6 +1,18 @@
 
 SUBDIRS = src
 
+MAINTAINERCLEANFILES = Makefile.in \
+    aclocal.m4 \
+    config.guess \
+    config.h.in \
+    config.sub \
+    configure \
+    depcomp \
+    install-sh \
+    ltmain.sh \
+    missing \
+    mkinstalldirs
+
 moo:
 	@echo "         (__) "
 	@echo "         (oo) "
