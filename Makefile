@@ -1,7 +1,7 @@
 CC=gcc
 RM=/bin/rm
 LDFLAGS=-pg
-CFLAGS=-I. -Wall -g -pg -fprofile-arcs -O3
+CFLAGS=-I. -Wall -g -pg -fprofile-arcs -DDEBUG
 ME=sux
 
 SOURCES = memory.c main.c dbuf.c parse.c dispatch.c match.c usertable.c s_err.c
