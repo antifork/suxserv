@@ -1,4 +1,5 @@
 %{
+#line 1 "parse.gperf"
 /*
  * Copyright 2002 Barnaba Marcello <vjt@azzurra.org>
  * 
@@ -89,7 +90,7 @@ MS, m_cs, 0
 OS, m_os, 0
 RS, m_rs, 0
 %%
-
+#line 94 "parse.gperf"
 /*
  * stolen from bahamut/src/parse.c
  */
@@ -112,12 +113,13 @@ gint parse(gchar *in)
 
     s = sender;
     *s = '\0';
+
+    /* g_fprintf(stderr, "<: %s\n", buffer); */    
     
     for (ch = buffer; *ch == ' '; ch++);	/* skip spaces */
 
     strncpy(buffer, in, BUFSIZE);
 
-    /* g_fprintf(stderr, "<: %s\n", buffer); */    
     para[0] = G_LIKELY(u) ? u->nick : NULL;
     if (*ch == ':') 
     {
@@ -240,29 +242,24 @@ gint parse(gchar *in)
     return (*mptr->func) (u, i, para);
 }
 
-gchar **my_g_strsplit(gchar *string, gchar term, gint *elems)
+gboolean my_g_strsplit(gchar *string, gchar term, guint max_elems, guint *count, gchar **str_array)
 {
     gchar *remainder, *s;
-    GSList *string_list = NULL, *slist;
     guint n = 0;
-    gchar **str_array;
     
-    g_return_val_if_fail(string != NULL, NULL);
+    g_return_val_if_fail(string != NULL, FALSE);
 
     remainder = string;
     s = strchr(remainder, term);
 
-    while(s)
+    max_elems--;
+    while(s && n < max_elems)
     {
 	gsize len;
-	gchar *new_string;
 
 	len = s - remainder;
-	new_string = g_new(gchar, len + 1);
-	strncpy(new_string, remainder, len);
-	new_string[len] = '\0';
-	string_list = g_slist_prepend(string_list, new_string);
-	n++;
+	remainder[len] = '\0';
+	str_array[n++] = remainder;
 	remainder = s + 1;
 
 	s = strchr(remainder, term);
@@ -270,23 +267,22 @@ gchar **my_g_strsplit(gchar *string, gchar term, gint *elems)
 
     if(*remainder)
     {
-	n++;
-	string_list = g_slist_prepend(string_list, g_strdup(remainder));
+	/* case 1:
+	 *	there was not enough space to hold all the strings, 
+	 	and we put the remainder in the last slot of the string
+		array
+	 * case 2:
+	 	the last string was not terminated, and we must stick it
+		back into the original queue.
+	 * in either case, we must notify the caller, so we return FALSE
+	 */
+	str_array[n++] = remainder;
+	*count = n;
+	return FALSE;
     }
 
-    str_array = g_new(gchar *, n + 1);
-    
-    *elems = n;
-
-    str_array[n] = NULL;
-    for(slist = string_list; slist; slist = g_slist_next(slist))
-    {
-	str_array[--n] = slist->data;
-    }
-
-    g_slist_free(string_list);
-
-    return str_array;
+    *count = n;
+    return TRUE;
 }
 
 /*

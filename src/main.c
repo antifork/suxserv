@@ -77,10 +77,9 @@ gint main(gint argc, gchar **argv)
     {
 	GThread *net_thr, *parse_thr, *sig_thr;
 	GError *err = NULL;
-	pid_t pid = fork();
 	gint *received_signal = NULL;
 
-	switch(pid)
+	switch(fork())
 	{
 	    case 0:
 		/* child */		
@@ -131,7 +130,7 @@ gint main(gint argc, gchar **argv)
 
 	    default:
 		/* father */
-		g_message("Services are daemonizing [pid %d]", pid);
+		g_message("Services are daemonizing");
 		exit(EXIT_SUCCESS);
 
 		return 0;
@@ -250,7 +249,9 @@ static int start_net_thread(void)
 
 static int start_parse_thread(void)
 {
-    gchar **strings;
+    const gint STRINGS_PER_CYCLE = 2048;
+    gchar **strings = g_new0(gchar *, STRINGS_PER_CYCLE);
+    GString *read_data = g_string_sized_new(READBUFSZ);
     gint i, count;
 
     while(TRUE)
@@ -261,15 +262,14 @@ static int start_parse_thread(void)
 	    g_cond_wait(me.readbuf_cond, me.readbuf_mutex);
 	}
 
-	if(me.recvQ->str[me.recvQ->len - 1] != '\n')
+	read_data = g_string_assign(read_data, me.recvQ->str);
+	if(my_g_strsplit(read_data->str, '\n', STRINGS_PER_CYCLE, &count, strings) == FALSE)
 	{
-	    /* incomplete string */
-	    strings = my_g_strsplit(me.recvQ->str, '\n', &count);
+	    /* there is something to stick back into the recvQ */
 	    me.recvQ = g_string_assign(me.recvQ, strings[--count]);
 	}
 	else
 	{
-	    strings = my_g_strsplit(me.recvQ->str, '\n', &count);
 	    me.recvQ = g_string_erase(me.recvQ, 0, -1);
 	}
 	g_mutex_unlock(me.readbuf_mutex);
@@ -283,7 +283,8 @@ static int start_parse_thread(void)
 	    parse(strings[i]);
 	}
 
-	g_strfreev(strings);
+	memset((gpointer)strings, 0x0, sizeof(gchar*) * STRINGS_PER_CYCLE);
+	g_string_erase(read_data, 0, -1);
     }
 
     g_thread_exit(NULL);

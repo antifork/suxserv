@@ -48,6 +48,6 @@ gint parse(gchar *);
 
 void send_message_count(gchar *);
 
-gchar **my_g_strsplit(gchar *, gchar, gint *);
+gboolean my_g_strsplit(gchar *, gchar, guint, guint *, gchar **);
 
 #endif
