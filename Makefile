@@ -6,6 +6,8 @@ RM=/bin/rm
 
 all:	build $(ME)
 
+rebuild: clean all
+    
 build:
 	@for dir in $(SUBDIRS); do \
 		echo "Building $$dir"; \
