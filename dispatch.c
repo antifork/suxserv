@@ -142,7 +142,7 @@ int m_motd(int parc, char **parv)
     {
 	send_out(rpl_str(RPL_MOTD), me.name, parv[0], motd[i]);
     }
-    for (i = 0; i < 200; i++)
+    for (i = 0; i < 20; i++)
     {
 	send_out(rpl_str(RPL_MOTD), me.name, parv[0], "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     }
@@ -167,7 +167,7 @@ int m_info(int parc, char **parv)
     {
 	send_out(rpl_str(RPL_INFO), me.name, parv[0], info[i]);
     }
-    for (i = 0; i < 200; i++)
+    for (i = 0; i < 20; i++)
     {
 	send_out(rpl_str(RPL_INFO), me.name, parv[0], "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     }
@@ -186,7 +186,9 @@ int m_version(int parc, char **parv)
 }
 int m_squit(int parc, char **parv)
 {
-    DUMMY
+    fprintf(stderr, "received SQUIT for %s [%s] (PORCODIO)\n",
+	    parv[1], parv[2]);
+    return 0;
 }
 int m_pass(int parc, char **parv)
 {
