@@ -220,6 +220,7 @@ static int start_net_thread(void)
     g_mutex_unlock(me.ctx_mutex);
 
     g_message_syslog("Services booting, pid: %d", getpid());
+    time(&me.boot);
 
     me.recv_tag = g_source_add(me.handle, G_IO_IN | G_IO_ERR | G_IO_HUP, 
 	    (GIOFunc) net_receive_callback);

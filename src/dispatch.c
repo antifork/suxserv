@@ -608,6 +608,13 @@ gint m_stats(User *u, gint parc, gchar **parv)
 	    send_message_count(parv[0]);
 	    break;
 
+	case 'U':
+	case 'u':
+	    {
+		time_t now = NOW - me.boot;
+		send_out(rpl_str(RPL_STATSUPTIME), me.name, parv[0],
+			now / 86400, (now / 3600) % 24, (now / 60) % 60, now % 60);
+	    }
 	default:
 	    break;
     }
