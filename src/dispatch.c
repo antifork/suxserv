@@ -258,13 +258,12 @@ gint m_quit(User *u, gint parc, gchar **parv)
 		g_mem_chunk_free(_MPL(cmembers), jimmy->data);
 		g_slist_free_1(jimmy);
 
+		if(c->members == NULL)
+		{
+		    _TBL(channel).del(c);
+		    _TBL(channel).destroy(c);
+		}
 		break;
-	    }
-
-	    if(c->members == NULL)
-	    {
-		_TBL(channel).del(c);
-		_TBL(channel).destroy(c);
 	    }
 	}
     }
@@ -715,6 +714,20 @@ gint m_capab(User *u, gint parc, gchar **parv)
 
     return 0;
 }
+
+gint m_lusers(User *u, gint parc, gchar **parv)
+{
+    g_return_val_if_fail(u != NULL, -1);
+    
+    send_out(rpl_str(RPL_LUSERCHANNELS),
+	    me.name, u->nick, _TBL(channel).count());
+    
+    send_out(rpl_str(RPL_GLOBALUSERS),
+	    me.name, u->nick, _TBL(user).count());
+
+    return 0;
+}
+
 gint m_burst(User *u, gint parc, gchar **parv)
 {
     DUMMY
