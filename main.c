@@ -9,6 +9,8 @@
 
 extern gint errno;
 
+static void exit_func(gint);
+
 gint main(gint argc, gchar **argv)
 {
     GMainLoop *main_loop;
@@ -61,7 +63,7 @@ void fatal(gchar *fmt, ...)
 }
 
 
-void exit_func(gint sig)
+static void exit_func(gint sig)
 {
     fprintf(stderr, "received signal %d, quitting ..\n",
 	    sig);
