@@ -1,0 +1,115 @@
+AC_INIT(src)
+
+AM_CONFIG_HEADER(config.h)
+AM_INIT_AUTOMAKE(suxserv, 0.2)
+
+AM_MAINTAINER_MODE
+
+AC_ISC_POSIX
+AC_PROG_CC
+AC_PROG_CPP
+AC_STDC_HEADERS
+#AC_ARG_PROGRAM
+AC_PROG_LIBTOOL
+AM_PROG_LIBTOOL
+
+AC_CHECK_HEADERS(stdlib.h stdarg.h string.h unistd.h netdb.h fcntl.h time.h signal.h syslog.h errno.h pthread.h)
+
+# check posix headers..
+AC_CHECK_HEADERS(sys/types.h sys/socket.h sys/time.h sys/poll.h netinet/in.h arpa/inet.h)
+
+dnl * OS specific options
+case "$host_os" in
+  hpux*)
+    CFLAGS="$CFLAGS -D_XOPEN_SOURCE_EXTENDED"
+    ;;
+  *)
+    ;;
+esac
+
+AC_CHECK_FUNC(pthread_sigmask, [], [
+	AC_CHECK_LIB(pthread, pthread_sigmask, [], [
+	    AC_ERROR([Cannot find pthread_sigmask()])
+	])
+])
+
+AC_CHECK_FUNC(sigfillset, [], [
+	AC_CHECK_LIB(pthread, sigfillset, [], [
+	    AC_ERROR([Cannot find sigfillset()])
+	])
+])
+
+AC_CHECK_FUNC(sigwait, [], [
+	AC_CHECK_LIB(pthread, sigwait, [], [
+	    AC_ERROR([Cannot find sigwait()])
+	])
+])
+
+AC_CHECK_FUNC(socket, [], [
+	AC_CHECK_LIB(socket, socket, [
+		LIBS="$LIBS -lsocket"
+	])
+])
+
+AC_CHECK_FUNC(inet_ntop, [], [
+	AC_CHECK_LIB(nsl, inet_ntop, [
+		LIBS="$LIBS -lnsl"
+	])
+])
+
+dnl * gcc specific options
+if test "x$ac_cv_prog_gcc" = "xyes"; then
+  CFLAGS="$CFLAGS -Wall"
+fi
+
+dnl * socklen_t - AC_CHECK_TYPE() would be _really_ useful if it only would
+dnl * accept header files where to find the typedef..
+AC_MSG_CHECKING([for socklen_t])
+AC_CACHE_VAL(sux_cv_type_socklen_t,
+[AC_TRY_COMPILE([
+#include <sys/types.h>
+#include <sys/socket.h>],
+[socklen_t t;],
+sux_cv_type_socklen_t=yes,
+sux_cv_type_socklen_t=no,
+)])
+if test $sux_cv_type_socklen_t = no; then
+AC_DEFINE(socklen_t, int, Define to 'int' if <sys/socket.h> doesn't define.)
+fi
+AC_MSG_RESULT($sux_cv_type_socklen_t)
+
+checks="1 2"
+
+for try in $checks; do
+  glib_config_args=
+  if test $try = 1; then
+    glib_modules="gmodule gthread"
+  else
+    echo "*** trying without -lgmodule"
+    glib_modules="gthread"
+  fi
+  AM_PATH_GLIB_2_0(2.2.0,,, $glib_modules)
+  if test "$GLIB_LIBS"; then
+    if echo $glib_modules | grep gmodule > /dev/null; then
+      AC_DEFINE([HAVE_GMODULE], [], [Have gmodule installed])
+      have_gmodule=yes
+    fi
+    break
+  fi
+done
+
+if test -z "$GLIB_LIBS"; then
+  echo
+  echo "*** If you don't have GLIB, you can get it from ftp://ftp.gtk.org"
+  echo
+
+  if test -z "$GLIB_LIBS"; then
+    AC_ERROR([GLIB is required to build suxserv.])
+  fi
+fi
+
+LIBS="$LIBS $GLIB_LIBS"
+
+AC_OUTPUT(Makefile src/Makefile)
+
+echo "Sux services are now configured !"
