@@ -48,7 +48,7 @@ static int usertable_get(TABLE_T *d, char *name, User *u)
     memset((void*) u, 0x0, sizeof(User));
     if(p)
     {
-	while(p && myncmp(name, p->nick, NICKLEN) != 0)
+	while(p && mycmp(name, p->nick) != 0)
 	{
 	    p = p->next;
 	}
@@ -70,7 +70,7 @@ static User *usertable_getp(TABLE_T *d, char *name)
     
     if(p)
     {
-	while(p && myncmp(name, p->nick, NICKLEN) != 0)
+	while(p && mycmp(name, p->nick) != 0)
 	    p = p->next;
     }
     return p;
@@ -95,7 +95,7 @@ static int usertable_del(TABLE_T *d, char *name)
     hash_t h = hash(name);
     User *p = t[h], *p2 = NULL;
 
-    while(p && myncmp(name, p->nick, NICKLEN) != 0)
+    while(p && mycmp(name, p->nick) != 0)
     {
 	p2 = p;
 	p = p->next;
