@@ -244,7 +244,7 @@ static gboolean remove_user_from_channel(Channel *c, User *u)
 	    g_slist_free_1(johnny);
 
 	    g_return_val_if_fail(u->channels != NULL, -1);
-	    
+
 	    if(c->members == NULL)
 	    {
 		_TBL(channel).del(c);
@@ -824,7 +824,7 @@ gint m_whois(User *u, gint parc, gchar **parv)
 {
     User *target, *target_srv;
     gchar *nick = parv[2];
-    gchar chanbuf[512];
+    gchar chanbuf[BUFSIZE];
     gint len, mlen;
     GSList *johnny; /* walker */
     Channel *c;
@@ -854,7 +854,7 @@ gint m_whois(User *u, gint parc, gchar **parv)
 	    johnny = g_slist_next(johnny))
     {
 	c = ((SLink*)johnny->data)->value.c;
-	if(len + strlen(c->chname) > sizeof(chanbuf) - 4 - mlen)
+	if(len + strlen(c->chname) > (gsize_t) BUFSIZE - 4 - mlen)
 	{
 	    send_out(":%s %d %s %s :%s",
 		    me.name, RPL_WHOISCHANNELS,
