@@ -26,25 +26,22 @@
 
 typedef struct user
 {
-    struct user *next;
-    char nick[NICKLEN + 1];
-    char username[USERLEN + 1];
-    char host[HOSTLEN + 1];	
-    char virthost[HOSTLEN + 1];
-    char gcos[INFOLEN + 1];
-    char server[NICKLEN + 1];
+    gchar nick[NICKLEN + 1];
+    gchar username[USERLEN + 1];
+    gchar host[HOSTLEN + 1];	
+    gchar virthost[HOSTLEN + 1];
+    gchar gcos[INFOLEN + 1];
+    gchar server[NICKLEN + 1];
     time_t ts;
-    short mode;
-    TABLE_T *channels;
-    TABLE_T *identified_chans;
-    TABLE_T *identified_nicks;
-    short invalid_pw_count;
+    gshort mode;
+    GSList *channels;
+    gshort invalid_pw_count;
     time_t invalid_pw_time;
     time_t lastmemosend;
     time_t lastnickreg;
     time_t flood_time;
-    short floodlev;
-    short motd, version;
+    gshort floodlev;
+    gshort motd, version;
 } User;
 
 #define CMODE_i 0x0001
@@ -61,24 +58,24 @@ typedef struct user
 #define CMODE_c 0x0800
 #define CMODE_O 0x1000
 #define CMODE_M 0x2000
+
 typedef struct
 {
-   long limit;
-   unsigned short mode;
-   char key[KEYLEN + 1];
+   gulong limit;
+   gushort mode;
+   gchar key[KEYLEN + 1];
 } Mode;
 
 typedef struct channel
 {
-   struct channel *next;
-   char topic[TOPICLEN + 1];
-   char topic_nick[NICKLEN + 1];
+   gchar topic[TOPICLEN + 1];
+   gchar topic_nick[NICKLEN + 1];
    time_t topic_time;
    time_t channelts;
    Mode mode;
-   TABLE_T *bans;
-   TABLE_T *users;
-   char chname[CHANNELLEN + 1];
+   GSList *bans;
+   GList *users;
+   gchar chname[CHANNELLEN + 1];
 } Channel;
 
 #endif /* __sux_h__ */
