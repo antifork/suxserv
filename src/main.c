@@ -44,31 +44,46 @@ gint main(gint argc, gchar **argv)
 		close(0);
 		close(1);
 		/*close(2);*/
-		
+	
 		main_loop = g_main_loop_new(NULL, TRUE);
 
 		tables_init();
 		
-		log_init_syslog();
-		log_set_irc_wrapper(main_loop);
+		log_set_irc_wrapper();
 
 		g_message_syslog("Services booting, pid: %d", getpid());
 
-		g_io_add_watch(me.handle,
+		me.recv_tag = g_io_add_watch(me.handle,
 			G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc) net_receive_callback, NULL);
-
-		g_io_add_watch(me.handle,
-			G_IO_ERR | G_IO_HUP | G_IO_NVAL, (GIOFunc) net_err_callback, NULL);
 
 		me.send_tag = g_io_add_watch(me.handle,
 			G_IO_OUT | G_IO_ERR, (GIOFunc) net_send_callback, NULL);
+
+		me.err_tag = g_io_add_watch(me.handle,
+			G_IO_ERR | G_IO_HUP | G_IO_NVAL, (GIOFunc) net_err_callback, NULL);
 
 		send_out("PASS %s :TS", me.pass);
 		send_out("CAPAB NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
 		send_out("SVINFO 5 3 0 :%lu", time(NULL));
 		send_out("SERVER %s 1 :%s", me.name, me.info);
 	
-		g_main_loop_run(main_loop);
+		START_RUNNING();
+
+		do
+		{
+		    g_main_context_iteration(NULL, TRUE);
+		} while(IS_RUNNING());
+
+		net_shutdown(me.handle);
+
+		g_source_remove(me.recv_tag);
+		g_source_remove(me.err_tag);
+		if(me.send_tag != -1)
+		    g_source_remove(me.send_tag);
+
+		g_io_channel_unref(me.handle);
+
+		g_main_loop_unref(main_loop);
 	
 		return 0;
 
