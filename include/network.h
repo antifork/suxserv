@@ -17,7 +17,7 @@
  * 
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement:
- *    This product includes software developed by Chip Norkus.
+ *    This product includes software developed by Barnaba Marcello.
  * 
  * 4. The names of the maintainer, developers and contributors may not be
  *    used to endorse or promote products derived from this software
@@ -54,9 +54,5 @@ gboolean net_shutdown(GIOChannel *);
 void setup_netbuf(void);
 
 void send_out(gchar *, ...) G_GNUC_PRINTF(1, 2);
-
-GSource *g_source_add(GIOChannel *, GIOCondition, GIOFunc);
-GSource *g_timeout_source_add(guint, GSourceFunc, gpointer);
-void g_source_del(GSource **);
 
 #endif
