@@ -3,3 +3,4 @@ gmon.out
 .nfs*
 *.da
 *.swp
+core.*
