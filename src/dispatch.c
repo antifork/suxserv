@@ -36,9 +36,10 @@ static struct
 static gboolean ping_timeout(User *u)
 {
     /* ping timeout */
-    if(u)
+    send_out("ERROR :Closing Link: Ping Timeout");
+
+    if(G_LIKELY(u))
     {
-	send_out("ERROR :Ping Timeout");
 	send_out(":%s SQUIT %s :Ping Timeout (%d usecs)",
 		me.name, u->nick, PING_FREQUENCY);
     }
@@ -69,7 +70,7 @@ void nego_start(void)
     send_out("SVINFO 5 3 0 :%lu", time(NULL));
     send_out("SERVER %s 1 :%s", me.name, me.info);
 
-    uplink.ping_tag = -1;
+    uplink.ping_tag = g_timeout_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
     uplink.ptr = _TBL(user).alloc(SUX_UPLINK_NAME);
 }
 
@@ -227,6 +228,37 @@ static void list_free_atoms(gpointer *data, GMemChunk *chunk)
     g_mem_chunk_free(chunk, data);
 }
 
+static gboolean remove_user_from_channel(Channel *c, User *u)
+{
+    GSList *johnny; /* the walker */
+    ChanMember *cm;
+
+    for(johnny = c->members; johnny; johnny = g_slist_next(johnny))
+    {
+	g_return_val_if_fail(johnny->data != NULL, FALSE);
+
+	cm = (ChanMember *) johnny->data;
+	g_return_val_if_fail(cm->u != NULL, 0);
+
+	if(cm->u == u)
+	{
+	    c->members = g_slist_remove_link(c->members, johnny);
+	    g_mem_chunk_free(_MPL(cmembers), johnny->data);
+	    g_slist_free_1(johnny);
+
+	    if(c->members == NULL)
+	    {
+		_TBL(channel).del(c);
+		_TBL(channel).destroy(c);
+	    }
+
+	    return TRUE;
+	}
+    }
+
+    return FALSE;
+}
+
 /*
  * m_quit
  * parv[0] = sender prefix
@@ -241,31 +273,10 @@ gint m_quit(User *u, gint parc, gchar **parv)
 
     for(johnny = u->channels; johnny; johnny = g_slist_next(johnny))
     {
-	GSList *jimmy; /* the second walker */
-	c = _TBL(channel).get(((SLink *)johnny->data)->value.c->chname);
-
+	c = ((SLink *)johnny->data)->value.c;
 	g_return_val_if_fail(c != NULL, 0);
-		
-	for(jimmy = c->members; jimmy; jimmy = g_slist_next(jimmy))
-	{
-	    g_return_val_if_fail(jimmy->data != NULL, 0);
-	    g_return_val_if_fail(((ChanMember*)jimmy->data)->u != NULL, 0);
-	    
-	    if(((ChanMember*)jimmy->data)->u == u)
-	    {
-		/* remove this link */
-		c->members = g_slist_remove_link(c->members, jimmy);
-		g_mem_chunk_free(_MPL(cmembers), jimmy->data);
-		g_slist_free_1(jimmy);
 
-		if(c->members == NULL)
-		{
-		    _TBL(channel).del(c);
-		    _TBL(channel).destroy(c);
-		}
-		break;
-	    }
-	}
+	g_return_val_if_fail(remove_user_from_channel(c, u) == TRUE, -1);
     }
 
     g_slist_foreach(u->channels, (GFunc) list_free_atoms, _MPL(links));
@@ -289,33 +300,15 @@ gint m_part(User *u, gint parc, gchar **parv)
     gchar *chname = parv[1];
 
     Channel *c;
-    GSList *johnny; /* the walker */
     
     g_return_val_if_fail(u != NULL, 0);
-
     g_return_val_if_fail(pfx != NULL, 0);
     g_return_val_if_fail(chname != NULL, 0);
 
     c = _TBL(channel).get(chname);
     g_return_val_if_fail(c != NULL, 0);
-    
-    for(johnny = c->members; johnny; johnny = g_slist_next(johnny))
-    {
-	if(((ChanMember*)johnny->data)->u == u)
-	{
-	    c->members = g_slist_remove_link(c->members, johnny);
-	    g_mem_chunk_free(_MPL(cmembers), johnny->data);
-	    g_slist_free_1(johnny);
-	    
-	    break;
-	}
-    }
 
-    if(c->members == NULL)
-    {
-	_TBL(channel).del(c);
-	_TBL(channel).destroy(c);
-    }
+    g_return_val_if_fail(remove_user_from_channel(c, u) == TRUE, -1);
 
     return 1;
 }
@@ -390,6 +383,8 @@ gint m_server(User *u, gint parc, gchar **parv)
 	u->mode = atoi(parv[2]);
 	strcpy(u->gcos, parv[3]);
 	
+	g_source_remove(uplink.ping_tag);
+	uplink.ping_tag = -1;
 	g_timeout_add(PING_FREQUENCY, (GSourceFunc) send_ping, u);
 
 	g_message("Linked with %s [%s], distant %d hop%s",
