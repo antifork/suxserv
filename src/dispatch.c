@@ -951,11 +951,12 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
     gchar *channel;
     gchar *users = NULL;
     gchar *modes;
-    gchar **users_arr;
-    gchar *s;
     Channel *c = NULL;
+    
     Mode mode;
-    gint i;
+    gint i, count;
+    gchar *users_arr[512];
+    gchar *s;
 
     g_return_val_if_fail(parv != NULL, 0);
 
@@ -970,9 +971,14 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
 
     if(parc == 3)
     {
+	User *u;
+	
 	/* client sjoin with timestamp */
 	s = parv[0];
 	c->ts = ts;
+
+	u = _TBL(user).get(s);
+	//g_printf("Sjoin(3) for user %s\n", u->nick);
 
 	add_user_to_channel(_TBL(user).get(s), c, 0);
 
@@ -996,12 +1002,14 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
 	}
 	c->mode = mode;
 	users = parv[4 + args];
+
+	//g_printf("Sjoin(%d) for users: ", parc);
     }
 
     g_return_val_if_fail(users != NULL, -1);
 
-    users_arr = g_strsplit(users, " ", 0);
-    for(i = 0; users_arr[i] != NULL; i++)
+    my_g_strsplit(users, ' ', 512, &count, users_arr);
+    for(i = 0; i < count; i++)
     {
 	gint fl = 0;
 	
@@ -1019,13 +1027,19 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
 	while(*s == '@' || *s == '+')
 	    s++;
 	
+	//g_printf("%s", s);
 	if(!g_slist_find_custom(c->members, s, (GCompareFunc) cm_compare))
 	{
 	    add_user_to_channel(_TBL(user).get(s), c, fl);
 	}
+	else
+	{
+	    //g_printf("*");
+	}
     }
+    //g_printf("\n");
     
-    g_strfreev(users_arr);
+    //g_strfreev(users_arr);
 
     return 1;
 }
