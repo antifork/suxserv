@@ -3,30 +3,58 @@
 #include <glib.h>
 
 #define FINGER_IN_THE_ASS 0x1
-#define SOMATIZZA 0x2
+#define SUX 0x2
 
-
-guint girls, man, autismo;
+guint girls, man, coding;
 guint64 happyness;
 
-while(TRUE)
+void girls_sux(void)
 {
-    girls |= FINGER_IN_THE_ASS;
+    while(TRUE)
+    {
+	girls |= FINGER_IN_THE_ASS;
+    }
 }
 
-while(G_LIKELY(girls & FINGER_IN_THE_ASS)) // almost unuseful
+void man_with_girl(void)
 {
-    man |= SOMATIZZA;
+    while(G_LIKELY(girls & FINGER_IN_THE_ASS)) // almost unuseful
+    {
+	man |= SUX;
+    }
 }
 
-if(man & SOMATIZZA)
+void man_life(void)
 {
-    autismo--;
+    while(coding && happyness)
+    {
+	
+	if(man & SUX)
+	{
+	    coding--;
+	    happyness >> 1;
+	}
+	else
+	{
+	    coding++;
+	    happyness << 1;
+	}
+    }
+
+    g_thread_exit(NULL);
 }
-else
+
+gint main(void)
 {
-    autismo++;
-    happyness << 1;
+    GThread *man_life_thr;
+
+    g_thread_create((GThreadFunc)girls_sux, FALSE, NULL);
+    g_thread_create((GThreadFunc)man_with_girl, FALSE, NULL);
+    man_life_ths = g_thread_create((GThreadFunc)man_life, TRUE, NULL);
+
+    g_thread_join(man_life_thr);
+
+    abort();
 }
 
 [...]
