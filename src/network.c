@@ -127,7 +127,7 @@ GIOChannel *connect_server(gchar *host, guint port)
     return(ret);
 }
 
-GSource *g_source_add(GIOChannel *handle, GIOCondition cond, GIOFunc callback)
+G_INLINE_FUNC GSource *g_source_add(GIOChannel *handle, GIOCondition cond, GIOFunc callback)
 {
     GSource *gs;
 
@@ -144,7 +144,23 @@ GSource *g_source_add(GIOChannel *handle, GIOCondition cond, GIOFunc callback)
     return gs;
 }
 
-GSource *g_timeout_source_add(guint interval, GSourceFunc callback, gpointer user_data)
+G_INLINE_FUNC GSource *g_source_add_nolock(GIOChannel *handle, GIOCondition cond, GIOFunc callback)
+{
+    GSource *gs;
+
+    gs = g_io_create_watch(handle, cond);
+    g_source_set_priority(gs, G_PRIORITY_DEFAULT);
+    g_source_set_callback(gs, (GSourceFunc) callback, NULL, NULL);
+
+    g_source_attach(gs, me.ctx);
+
+    g_source_unref(gs);
+
+    return gs;
+}
+
+
+G_INLINE_FUNC GSource *g_timeout_source_add(guint interval, GSourceFunc callback, gpointer user_data)
 {
     GSource *gs;
 
@@ -161,7 +177,7 @@ GSource *g_timeout_source_add(guint interval, GSourceFunc callback, gpointer use
     return gs;
 }
 
-void g_source_del(GSource **gs)
+G_INLINE_FUNC void g_source_del(GSource **gs)
 {
     g_return_if_fail(*gs != NULL);
     
@@ -172,7 +188,7 @@ void g_source_del(GSource **gs)
     g_mutex_unlock(me.ctx_mutex);
 }
 
-gboolean g_source_del_nolock(GSource **gs)
+G_INLINE_FUNC gboolean g_source_del_nolock(GSource **gs)
 {
     g_return_val_if_fail(*gs != NULL, FALSE);
     
@@ -353,8 +369,10 @@ void send_out(gchar *fmt, ...)
     me.sendQ = g_string_append(me.sendQ, send_out_buf);
     g_mutex_unlock(me.writebuf_mutex);
 
+    g_mutex_lock(me.ctx_mutex);
     if(me.send_tag == NULL)
     {
-	me.send_tag = g_source_add(me.handle, G_IO_OUT | G_IO_ERR, (GIOFunc)net_send_callback);
+	me.send_tag = g_source_add_nolock(me.handle, G_IO_OUT | G_IO_ERR, (GIOFunc)net_send_callback);
     }
+    g_mutex_unlock(me.ctx_mutex);
 }
