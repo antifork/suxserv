@@ -285,7 +285,7 @@ gint m_nick(User *u, gint parc, gchar **parv)
  */
 gint m_error(User *u, gint parc, gchar **parv)
 {
-   // g_critical_syslog("%s", parv[1]);
+    g_critical_syslog("%s", parv[1]);
 
     return 0;
 }
@@ -336,8 +336,6 @@ static gboolean remove_user_from_channel(Channel *c, User *u)
 	    u->nick, c->chname);
 
     return FALSE;
-
-    return TRUE;
 }
 
 static gboolean remove_channel_from_user_chanlist(Channel *c, User *u)
