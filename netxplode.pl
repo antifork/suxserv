@@ -27,7 +27,7 @@
 
 
 use constant clients => 100;
-my @servers = ( "localhost.vejnet.org:6667" );
+my @servers = ( "homes.vejnet.org:6667" );
 		
 my @onceactions = (
 		   "PRIVMSG nickserv :register moomilk ircd\@localhost \nJOIN #netxplodeRAND\nPRIVMSG chanserv :register #netxplodeRAND moomilksux xyz\n",
