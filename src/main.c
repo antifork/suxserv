@@ -48,91 +48,61 @@
 
 extern gint errno;
 
-static void setup_allocators(void);
-static void setup_fds(void);
-static void setup_signals(void);
-
 gint main(gint argc, gchar **argv)
 {
-    if(!GLIB_CHECK_VERSION(2, 0, 0))
+    if(!GLIB_CHECK_VERSION(2, 2, 0))
     {
-	g_critical("GLib version 2.0.0 or above is required");
+	g_critical("GLib version 2.2.0 or above is required");
 	exit(EXIT_FAILURE);
     }
 
-    strcpy(me.name, SUX_SERV_NAME);
-    strcpy(me.pass, SUX_PASS);
-    strcpy(me.info, SUX_VERSION);
-    strcpy(me.host, SUX_UPLINK_HOST);
-
-    log_set_tty_wrapper();
-
-    if((me.handle = connect_server(me.host, SUX_UPLINK_PORT)))
+    if(argc > 1)
     {
-	switch(0)//fork())
+	log_set_irc_wrapper();
+
+	strcpy(me.name, SUX_SERV_NAME);
+	strcpy(me.pass, SUX_PASS);
+	strcpy(me.info, SUX_VERSION);
+
+	if((me.handle = connect_server(SUX_UPLINK_HOST, SUX_UPLINK_PORT)))
 	{
-	    case 0:
-		/* child */		
-		g_thread_init(NULL);
-		
-		setup_mutexes();
-		setup_netbuf();
-		setup_signals();
-		setup_fds();
-		setup_allocators();
-		setup_tables();
-		
-		log_set_irc_wrapper();
+	    start_master_thread();
+	}
+	else
+	{
+	    g_critical_syslog("Cannot connect to server %s:%d", SUX_UPLINK_HOST, SUX_UPLINK_PORT);
+	    exit(EXIT_FAILURE);
+	}
+    }
+    else
+    {
+	gint child_pid;
+	GError *err;
+	
+	log_set_tty_wrapper();
 
-		spawn_threads();
-		wait_for_termination();
-		clean_exit();
+	gchar *child_argv[3];
 
-		return 0;
+	child_argv[0] = argv[0];
+	child_argv[1] = "-d";
+	child_argv[2] = NULL;
+	
+	if(g_spawn_async_with_pipes(NULL, child_argv, NULL,  G_SPAWN_LEAVE_DESCRIPTORS_OPEN |
+		    G_SPAWN_STDOUT_TO_DEV_NULL| G_SPAWN_STDERR_TO_DEV_NULL | G_SPAWN_DO_NOT_REAP_CHILD,
+		    NULL, NULL, &child_pid, NULL, NULL, NULL, &err))
+	{
+	    g_message("Services started (master thread id: %d)", child_pid);
 
-	    case -1:
-		/* error */
-		g_errno_critical("fork()");
+	    exit(EXIT_SUCCESS);
+	}
+	else
+	{
+	    g_critical("Failed to start master thread: %s", err->message);
+	    g_error_free(err);
 
-		return -1;
-
-	    default:
-		/* father */
-		g_message("Services are daemonizing");
-		exit(EXIT_SUCCESS);
-
-		return 0;
+	    exit(EXIT_FAILURE);
 	}
     }
 
-    g_critical("Cannot connect to server %s:%d", me.host, SUX_UPLINK_PORT);
-
-    return -1;
-}
-
-static void setup_signals(void)
-{
-    sigset_t signal_set;
-    
-    sigfillset(&signal_set);
-    pthread_sigmask(SIG_BLOCK, &signal_set, NULL);
-}
-
-static void setup_allocators(void)
-{
-    static GAllocator *gsl_all;
-    
-    gsl_all = g_allocator_new("GSList allocator", 1024);
-
-    g_slist_push_allocator(gsl_all);
-}
-
-static void setup_fds(void)
-{
-    fflush(stdout);
-    fflush(stderr);
-
-    close(0);
-    close(1);
-    close(2);
+    return EXIT_FAILURE;
 }
