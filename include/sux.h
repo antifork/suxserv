@@ -1,6 +1,7 @@
 #ifndef __sux_h__
 #define __sux_h__
 
+#define G_THREADS_ENABLED
 #include <glib.h>
 #include <glib/gprintf.h>
 #include "os.h"
@@ -132,6 +133,8 @@ struct slink
 			           * send an EOB */
 #define FLAGS_EOBRECV      0x08   /* we're waiting on an EOB */
 #define FLAGS_BURST	   (FLAGS_USERBURST | FLAGS_TOPICBURST)
+
+#define FLAGS_AWAY         0x10
 
 #define SUX_MODULE	"Sux Core Services"
 #define SUX_RELEASE	"0.02"

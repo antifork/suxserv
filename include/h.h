@@ -14,6 +14,7 @@ extern gint  m_nick(User *, gint, gchar **);
 extern gint  m_error(User *, gint, gchar **);
 extern gint  m_notice(User *, gint, gchar **);
 extern gint  m_quit(User *, gint, gchar **);
+extern gint  m_kill(User *, gint, gchar **);
 extern gint  m_server(User *, gint, gchar **);
 extern gint  m_info(User *, gint, gchar **);
 extern gint  m_stats(User *, gint, gchar **);

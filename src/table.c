@@ -113,7 +113,7 @@ TABLE_DECLARE(channel, Channel, FNV_hash, chname, gchar);
 MEMPOOL_DECLARE(cmembers);
 MEMPOOL_DECLARE(links);
     
-void tables_init(void)
+void setup_tables(void)
 {
     TABLE_SETUP_FUNC(user, USER_PREALLOC);
     TABLE_SETUP_FUNC(channel, CHANNEL_PREALLOC);

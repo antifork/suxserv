@@ -56,7 +56,7 @@ void nego_start(void)
 {
     send_out("PASS %s :TS", me.pass);
     send_out("CAPAB BURST NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
-    send_out("SVINFO 5 3 0 :%lu", time(NULL));
+    send_out("SVINFO 5 3 0 :%lu", NOW);
     send_out("SERVER %s 1 :%s", me.name, me.info);
 
     uplink.ping_tag = g_timeout_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
@@ -352,6 +352,17 @@ gint m_quit(User *u, gint parc, gchar **parv)
 }
 
 /*
+ * m_kill 
+ * parv[0] = sender prefix 
+ * parv[1] = kill victim 
+ * parv[2] = kill path
+ */
+gint m_kill(User *u, gint parc, gchar **parv)
+{
+    DUMMY
+}
+
+/*
  * m_part 
  * parv[0] = sender prefix 
  * parv[1] = channel
@@ -479,7 +490,7 @@ gint m_server(User *u, gint parc, gchar **parv)
 	uplink.ping_tag = -1;
 	g_timeout_add(PING_FREQUENCY, (GSourceFunc) send_ping, u);
 
-	uplink.firsttime = time(NULL);
+	uplink.firsttime = NOW;
 	send_out(":%s GNOTICE :Link with %s[%s] established, states: TS",
 		me.name, u->nick, SUX_UPLINK_HOST);
 	
@@ -618,14 +629,13 @@ gint m_pass(User *u, gint parc, gchar **parv)
  */
 gint m_svinfo(User *u, gint parc, gchar **parv)
 {
-    time_t deltat, tmptime, theirtime;
+    time_t deltat, theirtime;
     guint their_ts_ver, their_ts_min_ver;
 
     g_return_val_if_fail(parc > 4, -1);
 
-    tmptime = time(NULL);
     theirtime = atol(parv[4]);
-    deltat = ABS(theirtime - tmptime);
+    deltat = ABS(theirtime - NOW);
 
     if(deltat > 45)
     {
@@ -636,7 +646,7 @@ gint m_svinfo(User *u, gint parc, gchar **parv)
     else if(deltat > 15)
     {
 	g_warning("Link %s notable TS delta (my TS=%ld, their TS=%ld, delta=%ld",
-		u->nick, tmptime, theirtime, deltat);
+		u->nick, NOW, theirtime, deltat);
     }
 
     their_ts_ver = atoi(parv[1]);
@@ -955,7 +965,7 @@ gint m_burst(User *u, gint parc, gchar **parv)
     if(parc == 2)
     {
 	/* this is an EOB */
-	time_t synch_time = time(NULL) - uplink.firsttime;
+	time_t synch_time = NOW - uplink.firsttime;
 
 	uplink.flags &= ~FLAGS_EOBRECV;
 	if(uplink.flags & (FLAGS_SOBSENT|FLAGS_BURST))
@@ -973,14 +983,29 @@ gint m_burst(User *u, gint parc, gchar **parv)
     return 0;
 }
 
+/*
+ * m_away 
+ * parv[0] = sender prefix 
+ * parv[1] = away message
+ */
 gint m_away(User *u, gint parc, gchar **parv)
 {
-    DUMMY
+    gchar *msg = parv[1];
+    
+    g_return_val_if_fail(u != NULL, -1);
+    
+    if(parc < 2 || !*msg)
+    {
+	u->flags &= ~FLAGS_AWAY;
+    }
+    else
+    {
+	u->flags |= FLAGS_AWAY;
+    }
+
+    return 0;
 }
-gint m_nickcoll(User *u, gint parc, gchar **parv)
-{
-    DUMMY
-}
+
 gint m_cs(User *u, gint parc, gchar **parv)
 {
     DUMMY

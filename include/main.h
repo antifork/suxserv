@@ -23,20 +23,33 @@ typedef struct mydata
 	
     gushort port;
 
-    gint send_tag,
-    	recv_tag,
-	err_tag;
+    GSource *send_tag,
+    	*recv_tag,
+	*err_tag;
 
+    GString *sendQ, *recvQ;
+
+    GMutex *ctx_mutex, *time_mutex;
+    GCond *ctx_cond;
+    GPollFD fds[4];
+    GMainContext *ctx;
+
+    GCond *readbuf_cond;
+    GMutex *readbuf_mutex;
+    GMutex *writebuf_mutex;
+    GMutex *me_mutex;
+
+    time_t now;
 } MyData;
 
 EXTERN MyData me;
 
-#define RUNNING_DECLARE()	EXTERN	gboolean __is_running
-#define START_RUNNING()		__is_running = TRUE
-#define STOP_RUNNING()		__is_running = FALSE
-#define IS_RUNNING()		(__is_running == TRUE)
+#define NOW			(me.now)
 
-RUNNING_DECLARE();
+EXTERN gboolean net_thr_running;
+EXTERN gboolean parse_thr_running;
+
+EXTERN GSource *g_input_add(GIOChannel *, GIOCondition, GIOFunc);
 
 #undef EXTERN
 #endif

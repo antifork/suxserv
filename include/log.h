@@ -46,7 +46,8 @@ static void g_message_syslog(const gchar *format, ...)
 #endif
 
 void log_set_tty_wrapper(void);
-void log_set_irc_wrapper(void);
+void log_set_irc_wrapper_net_thr(void);
+void log_set_irc_wrapper_parse_thr(void);
 
 void __sux_gen_log_handler_error(const gchar *log_domain, GLogLevelFlags log_level,
 	const gchar *message);

@@ -6,6 +6,9 @@
 #include "sux.h"
 
 gint parse(gchar *);
+
 void send_message_count(gchar *);
+
+gchar **my_g_strsplit(gchar *, gchar, gint *);
 
 #endif

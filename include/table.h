@@ -181,6 +181,6 @@ struct TABLE
 #define MEMPOOL_SETUP_FUNC(NAME, DATA_TYPE, PRE_ALLOC)	\
 		NAME##_pool = g_mem_chunk_create(DATA_TYPE, PRE_ALLOC, G_ALLOC_AND_FREE)
 
-void tables_init(void);
+void setup_tables(void);
 
 #endif

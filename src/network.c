@@ -1,7 +1,6 @@
 #include "sux.h"
 #include "main.h"
 #include "network.h"
-#include "parse.h"
 #include "log.h"
 
 GIOChannel *connect_server(gchar *host, guint port)
@@ -82,106 +81,10 @@ GIOChannel *connect_server(gchar *host, guint port)
 	    return NULL;
 	}
 
-	g_io_channel_set_buffered(ret, TRUE);
-	g_io_channel_set_buffer_size(ret, IOBUFSIZE);
-
+	g_io_channel_set_buffered(ret, FALSE);
     }
 
     return(ret);
-}
-
-void send_out(gchar *fmt, ...)
-{
-    va_list ap;
-    gchar buffer[BUFSIZE + 1];
-    gsize len;
-
-    guint ret;
-    GError *err = NULL;
-    GIOStatus status;
-
-    g_return_if_fail(fmt != NULL);
-    
-    va_start(ap, fmt);
-    len = g_vsnprintf(buffer, BUFSIZE, fmt, ap);
-    va_end(ap);
-
-    if(len > BUFSIZE - 2)
-    {
-	buffer[BUFSIZE - 1] = '\n';
-	buffer[BUFSIZE] = '\0';
-	len = BUFSIZE;
-    }
-    else
-    {
-	buffer[len] = '\n';
-	buffer[len+1] = '\0';
-	len++;
-    }
-
-    /* g_fprintf(stderr, ">: %s", buffer); */
-
-    g_return_if_fail(me.handle != NULL);
-    g_return_if_fail(buffer != NULL);
-
-    status = g_io_channel_write_chars(me.handle, (const gchar *) buffer, len, &ret, &err);
-
-    if(status == G_IO_STATUS_ERROR)
-    {
-	g_critical_syslog("Write error: %s", err->message);
-	g_error_free(err);
-    }
-
-    if(me.send_tag == -1)
-    {
-	me.send_tag = g_io_add_watch(me.handle,
-		G_IO_OUT | G_IO_ERR, (GIOFunc) net_send_callback, NULL);
-    }
-}
-
-static GString *readbuf = NULL;
-
-void setup_netbuf(void)
-{
-    readbuf = g_string_sized_new(BUFSIZE);
-}
-
-gboolean net_receive_callback(GIOChannel *handle)
-{
-    GError *err = NULL;
-    gint arnold; /* terminator */
-
-    g_return_val_if_fail(handle != NULL, FALSE);
-
-    while(TRUE)
-    {
-	switch(g_io_channel_read_line_string(handle, readbuf, &arnold, &err))
-	{
-	    case G_IO_STATUS_NORMAL:
-		readbuf->str[arnold] = '\0';
-		parse(readbuf->str);
-		continue;
-
-	    case G_IO_STATUS_ERROR:
-		g_critical_syslog("Read error: %s", err->message);
-		g_error_free(err);
-		return FALSE;
-    
-	    case G_IO_STATUS_EOF:
-		g_critical_syslog("Read error: Connection closed");
-		return FALSE;
-
-	    case G_IO_STATUS_AGAIN:
-		return TRUE;
-
-	    default:
-		g_error("Unknown status returned by net_receive() [this is a bug !]");
-		return FALSE;
-	}
-    }
-    
-    abort();
-    return FALSE;
 }
 
 gboolean net_shutdown(GIOChannel *source)
@@ -206,28 +109,107 @@ gboolean net_shutdown(GIOChannel *source)
     return FALSE;
 }
 
+static GString *net_w_buf;
+static gchar *net_r_buf;
+static gchar *send_out_buf;
+void setup_netbuf(void)
+{
+    me.sendQ = g_string_sized_new(IOBUFSIZE);
+    me.recvQ = g_string_sized_new(IOBUFSIZE);
+
+    net_w_buf = g_string_sized_new(IOBUFSIZE);
+    net_r_buf = g_malloc0(IOBUFSIZE);
+
+    send_out_buf = g_malloc0(BUFSIZE);
+}
+
+gboolean net_receive_callback(GIOChannel *handle)
+{
+    GError *err = NULL;
+    gsize bytes_read;
+
+    g_return_val_if_fail(handle != NULL, FALSE);
+
+    while(TRUE)
+    {
+	switch(g_io_channel_read_chars(handle, net_r_buf, IOBUFSIZE, &bytes_read, &err))
+	{
+	    case G_IO_STATUS_NORMAL:
+		g_mutex_lock(me.readbuf_mutex);
+		net_r_buf[bytes_read] = '\0';
+		me.recvQ = g_string_append(me.recvQ, net_r_buf);
+		g_cond_signal(me.readbuf_cond);
+		g_mutex_unlock(me.readbuf_mutex);
+
+		return TRUE;
+	    case G_IO_STATUS_ERROR:
+		g_critical_syslog("Read error: %s", err->message);
+		g_error_free(err);
+		return FALSE;
+    
+	    case G_IO_STATUS_EOF:
+		g_critical_syslog("Read error: Connection closed");
+		return FALSE;
+
+	    case G_IO_STATUS_AGAIN:
+		return TRUE;
+
+	    default:
+		g_error("Unknown status returned by net_receive() [this is a bug !]");
+		return FALSE;
+	}
+    }
+    
+    abort();
+    return FALSE;
+}
+
 gboolean net_send_callback(GIOChannel *dest)
 {
     GError *err = NULL;
+    gsize bytes_written;
+    gboolean tried = FALSE;
 
     g_return_val_if_fail(dest != NULL, FALSE);
 
-    switch(g_io_channel_flush(dest, &err))
+    g_mutex_lock(me.writebuf_mutex);
+    net_w_buf = g_string_append(net_w_buf, me.sendQ->str);
+    me.sendQ = g_string_erase(me.sendQ, 0, -1);
+    g_mutex_unlock(me.writebuf_mutex);
+
+    while(TRUE)
     {
-	case G_IO_STATUS_ERROR:
-	    g_critical_syslog("Write error: %s", err->message);
-	    g_error_free(err);
-	    return FALSE;
+	switch(g_io_channel_write_chars(dest, net_w_buf->str, net_w_buf->len, &bytes_written, &err))
+	{
+	    case G_IO_STATUS_ERROR:
+		g_critical_syslog("Write error: %s", err->message);
+		g_error_free(err);
+		return FALSE;
 
-	case G_IO_STATUS_NORMAL:
-	    g_source_remove(me.send_tag);
-	    me.send_tag = -1;
-	    /* fallthrough */
-	case G_IO_STATUS_AGAIN:
-	case G_IO_STATUS_EOF:
-	    return TRUE;
+	    case G_IO_STATUS_NORMAL:
+		net_w_buf = g_string_erase(net_w_buf, 0, bytes_written);
+		if(!tried && net_w_buf->len)
+		{
+		    /* try once to deliver remaining data */
+		    tried = TRUE;
+		    continue;
+		}
+
+		g_mutex_lock(me.ctx_mutex);
+		if(me.send_tag)
+		{
+		    g_source_destroy(me.send_tag);
+		    g_source_unref(me.send_tag);
+		    me.send_tag = NULL;
+		}
+		g_mutex_unlock(me.ctx_mutex);
+
+		/* fallthrough */
+	    case G_IO_STATUS_AGAIN:
+	    case G_IO_STATUS_EOF:
+		return TRUE;
+	}
     }
-
     g_error_free(err);
 
     abort();
@@ -241,4 +223,41 @@ gboolean net_err_callback(GIOChannel *dest)
     g_critical_syslog("Network error");
 
     return FALSE;
+}
+
+void send_out(gchar *fmt, ...)
+{
+    va_list ap;
+    gsize len;
+
+    g_return_if_fail(fmt != NULL);
+    g_return_if_fail(me.handle != NULL);
+    
+    va_start(ap, fmt);
+    len = g_vsnprintf(send_out_buf, BUFSIZE, fmt, ap);
+    va_end(ap);
+
+    if(len > BUFSIZE - 2)
+    {
+	send_out_buf[BUFSIZE - 1] = '\n';
+	send_out_buf[BUFSIZE] = '\0';
+	len = BUFSIZE;
+    }
+    else
+    {
+	send_out_buf[len] = '\n';
+	send_out_buf[len+1] = '\0';
+	len++;
+    }
+
+/*    g_fprintf(stderr, ">: %s", send_out_buf);*/
+
+    g_mutex_lock(me.writebuf_mutex);
+    me.sendQ = g_string_append(me.sendQ, send_out_buf);
+    g_mutex_unlock(me.writebuf_mutex);
+
+    if(me.send_tag == NULL)
+    {
+	me.send_tag = g_input_add(me.handle, G_IO_OUT | G_IO_ERR, (GIOFunc)net_send_callback);
+    }
 }

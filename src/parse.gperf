@@ -15,7 +15,6 @@ REMOTE_TABLE_INSTANCE(user);
 %}
 struct Message { gchar *cmd; gint (*func)(User *, gint, gchar **); guint count; };
 %%
-436, m_nickcoll, 0
 ADMIN, m_admin, 0
 AWAY, m_away, 0
 BURST, m_burst, 0
@@ -35,6 +34,7 @@ PING, m_ping, 0
 PONG, m_pong, 0
 PRIVMSG, m_private, 0
 QUIT, m_quit, 0
+KILL, m_kill, 0
 SJOIN, m_sjoin, 0
 SQUIT, m_squit, 0
 STATS, m_stats, 0
@@ -56,21 +56,25 @@ RS, m_rs, 0
  * NOTE: parse() should not be called recusively by any other functions!
  */
 
-gint parse(gchar *buffer)
+gint parse(gchar *in)
 {
     static gchar sender[HOSTLEN + 1];
     static gchar *para[MAXPARA + 1];
+    static gchar buffer[BUFSIZE + 1];
 
     gchar *ch, *s;
     gint i, len = 0;
     struct Message *mptr;
     User *u = me.uplink;
 
-    /* g_fprintf(stderr, "<: %s\n", buffer); */
     s = sender;
     *s = '\0';
     
     for (ch = buffer; *ch == ' '; ch++);	/* skip spaces */
+
+    strncpy(buffer, in, BUFSIZE);
+
+    g_fprintf(stderr, "<: %s\n", buffer);
     
     para[0] = G_LIKELY(u) ? u->nick : NULL;
     if (*ch == ':') 
@@ -194,6 +198,55 @@ gint parse(gchar *buffer)
     return (*mptr->func) (u, i, para);
 }
 
+gchar **my_g_strsplit(gchar *string, gchar term, gint *elems)
+{
+    gchar *remainder, *s;
+    GSList *string_list = NULL, *slist;
+    guint n = 0;
+    gchar **str_array;
+    
+    g_return_val_if_fail(string != NULL, NULL);
+
+    remainder = string;
+    s = strchr(remainder, term);
+
+    while(s)
+    {
+	gsize len;
+	gchar *new_string;
+
+	len = s - remainder;
+	new_string = g_new(gchar, len + 1);
+	strncpy(new_string, remainder, len);
+	new_string[len] = '\0';
+	string_list = g_slist_prepend(string_list, new_string);
+	n++;
+	remainder = s + 1;
+
+	s = strchr(remainder, term);
+    }
+
+    if(*remainder)
+    {
+	n++;
+	string_list = g_slist_prepend(string_list, g_strdup(remainder));
+    }
+
+    str_array = g_new(gchar *, n + 1);
+    
+    *elems = n;
+
+    str_array[n] = NULL;
+    for(slist = string_list; slist; slist = g_slist_next(slist))
+    {
+	str_array[--n] = slist->data;
+    }
+
+    g_slist_free(string_list);
+
+    return str_array;
+}
+
 static void remove_unknown(gchar *sender, gchar *buffer)
 {
     /*
@@ -224,5 +277,3 @@ void send_message_count(gchar *requester)
 		me.name, requester, cmds[i].cmd, cmds[i].count);
     }
 }
-
-
