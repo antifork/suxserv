@@ -2,6 +2,7 @@
 #include "main.h"
 #include "network.h"
 #include "parse.h"
+#include "log.h"
 
 GIOChannel *connect_server(gchar *host, guint port)
 {
@@ -18,40 +19,40 @@ GIOChannel *connect_server(gchar *host, guint port)
     {
 	struct hostent *he = gethostbyname(host);
 	if(!he)
-	    fatal("gethostbyname()");
+	    g_errno_critical("gethostbyname()");
 	memcpy(&sock.sin_addr, he->h_addr_list[0], he->h_length);
     }
 
     sock.sin_port = port;
     sock.sin_family = AF_INET;
 
-    warn("connecting to %s ... ", inet_ntop(AF_INET,
+    g_message("connecting to %s ... ", inet_ntop(AF_INET,
 		(const void *) &sock.sin_addr, hostbuf, HOSTLEN-1));
 
     fflush(stderr);
 
     if((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-	fatal("socket()");
+	g_errno_critical("socket()");
 
     my_addr.sin_addr.s_addr = INADDR_ANY;
     my_addr.sin_port = 0;
     my_addr.sin_family = AF_INET;
 
     if(bind(fd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr_in)) < 0)
-	fatal("bind()");
+	g_errno_critical("bind()");
 
     if(connect(fd, (struct sockaddr *)&sock, sizeof(struct sockaddr_in)) < 0)
-	fatal("connect()");
+	g_errno_critical("connect()");
 
     if(getsockname(fd, (struct sockaddr *)&my_addr, &namelen) < 0)
-	fatal("getsockname()");
+	g_errno_critical("getsockname()");
 
     if((nb = fcntl(fd, F_GETFL, 0)) < 0)
-	fatal("fcntl(%d, F_GETFL, 0)", fd);
+	g_errno_critical("fcntl(F_GETFL)");
     else if(fcntl(fd, F_SETFL, nb | O_NONBLOCK) < 0)
-	fatal("fcntl(%d, F_SETFL, nb | O_NONBLOCK)", fd);
+	g_errno_critical("fcntl(F_SETFL, nb | O_NONBLOCK)");
 
-    warn(" connected.\n");
+    g_message("Connection established");
 
     if((ret = g_io_channel_unix_new(fd)))
     {
@@ -89,8 +90,7 @@ void send_out(gchar *fmt, ...)
 	len++;
     }
 
-    if(net_transmit(me.handle, buffer, len) < 0)
-	fatal("write error");
+    net_transmit(me.handle, buffer, len);
 
     return;
 }
@@ -108,8 +108,7 @@ gint net_transmit(GIOChannel *handle, const gchar *data, gint len)
 
     if(status == G_IO_STATUS_ERROR)
     {
-	fatal(err->message);
-	g_error_free(err);
+	g_critical_syslog("Write error: %s", err->message);
     }
 
     if(me.send_tag == -1)
@@ -134,7 +133,7 @@ gchar *net_receive(GIOChannel *handle, gsize *arnold) /* the terminator */
     gchar *ret;
     gsize len;
 
-    g_return_val_if_fail(handle != NULL, FALSE);
+    g_return_val_if_fail(handle != NULL, NULL);
 
     switch(g_io_channel_read_line(handle, &ret, &len, arnold, &err))
     {
@@ -147,19 +146,18 @@ gchar *net_receive(GIOChannel *handle, gsize *arnold) /* the terminator */
 	    return NULL;
 
 	case G_IO_STATUS_ERROR:
-	    fatal(err->message);
-	    g_error_free(err);
+	    g_critical_syslog("Read error: %s", err->message);
 	    return NULL;
     
 	case G_IO_STATUS_EOF:
-	    fatal("connection closed");
+	    g_critical_syslog("Read error: Connection closed");
 	    return NULL;
 
 	case G_IO_STATUS_AGAIN:
 	    return NULL;
 
 	default:
-	    fatal("unknown status returned by net_receive() [this is a bug !]");
+	    g_error_syslog("Unknown status returned by net_receive() [this is a bug !]");
 	    return NULL;
     }
     
@@ -174,7 +172,7 @@ gboolean net_flush(GIOChannel *dest)
     switch(g_io_channel_flush(dest, &err))
     {
 	case G_IO_STATUS_ERROR:
-	    fatal(err->message);
+	    g_critical_syslog("Write error: %s", err->message);
 	    return FALSE;
 	case G_IO_STATUS_NORMAL:
 	    g_source_remove(me.send_tag);
@@ -215,7 +213,7 @@ gboolean net_err_callback(GIOChannel *dest)
 {
     g_return_val_if_fail(dest != NULL, FALSE);
 
-    fatal("network error");
+    g_critical_syslog("network error");
 
     return FALSE;
 }

@@ -3,6 +3,7 @@
 #include "main.h"
 #include "usertable.h"
 #include "numeric.h"
+#include "log.h"
 
 #define DUMMY return 0;
 
@@ -62,12 +63,14 @@ gint m_kick(gint parc, gchar **parv)
  */
 gint m_nick(gint parc, gchar **parv)
 {
+    User *u;
+
     if(parc > 3)
     {
-	User *u;
 	/* new user. */
-	u = usertable.alloc(&usertable, parv[1]);
-	strcpy(u->nick, parv[1]);
+
+	u = usertable.alloc(parv[1]);
+
 	u->ts = strtoul(parv[3], NULL, 10);
 	/* XXX: umode handling */
 	strcpy(u->username, parv[5]);
@@ -80,17 +83,15 @@ gint m_nick(gint parc, gchar **parv)
     }
     else
     {
-	User u;
-	
 	/* nick change */
-	if(usertable.get(&usertable, parv[0], &u)) /* XXX: implement get and delete for TABLE_T */
+	if((u = usertable.get(parv[0])))
 	{
-	    if(!usertable.del(&usertable, parv[0]))
-		exit(1);
+	    if(!usertable.del(u))
+		abort();
 
-	    strcpy(u.nick, parv[1]);
-	    u.ts = strtoul(parv[2], NULL, 10);
-	    usertable.put(&usertable, parv[1], &u);
+	    strcpy(u->nick, parv[1]);
+	    u->ts = strtoul(parv[2], NULL, 10);
+	    usertable.put(u);
 
 	    return 1;
 	}
@@ -104,8 +105,8 @@ gint m_nick(gint parc, gchar **parv)
 
 gint m_error(gint parc, gchar **parv)
 {
-    errno = 0;
-    fatal("%s", parv[1]);
+    g_critical_syslog("%s", parv[1]);
+
     return 0;
 }
 gint m_notice(gint parc, gchar **parv)
@@ -120,7 +121,10 @@ gint m_notice(gint parc, gchar **parv)
  */
 gint m_quit(gint parc, gchar **parv)
 {
-    usertable.del(&usertable, parv[0]);
+    User *u = usertable.get(parv[0]);
+    
+    usertable.del(u);
+    usertable.destroy(u);
     return 1;
 }
 gint m_kill(gint parc, gchar **parv)
@@ -186,9 +190,7 @@ gint m_version(gint parc, gchar **parv)
 }
 gint m_squit(gint parc, gchar **parv)
 {
-    fatal("received SQUIT for %s [%s]",
-	    parv[1], parv[2]);
-    return 0;
+    DUMMY
 }
 gint m_pass(gint parc, gchar **parv)
 {

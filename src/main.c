@@ -6,15 +6,11 @@
 #include "parse.h"
 #include "usertable.h"
 #include "network.h"
+#include "log.h"
 
 extern gint errno;
 
-static void exit_func(gint);
-static void stderr_fatal(char *, ...);
-static void syslog_fatal(char *, ...);
-static void stderr_warn(char *, ...);
-static void syslog_warn(char *, ...);
-static void syslog_init(void);
+static void signal_handler(gint);
 
 gint main(gint argc, gchar **argv)
 {
@@ -27,14 +23,13 @@ gint main(gint argc, gchar **argv)
 
     me.port = htons(6667);
 
-    signal(SIGINT, exit_func);
-    signal(SIGHUP, exit_func);
-    signal(SIGQUIT, exit_func);
-    signal(SIGTERM, exit_func);
+    signal(SIGINT, signal_handler);
+    signal(SIGHUP, signal_handler);
+    signal(SIGQUIT, signal_handler);
+    signal(SIGTERM, signal_handler);
 
-    fatal = stderr_fatal;
-    warn = stderr_warn;
-    
+    log_set_tty_wrapper();
+
     if((me.handle = connect_server(me.host, me.port)))
     {
 	pid_t pid = fork();
@@ -43,8 +38,6 @@ gint main(gint argc, gchar **argv)
 	{
 	    case 0:
 		/* child */
-		syslog_init();
-		tables_init();
 
 		fflush(stdout);
 		fflush(stderr);
@@ -53,10 +46,14 @@ gint main(gint argc, gchar **argv)
 		close(1);
 		close(2);
 		
-		fatal = syslog_fatal;
-		warn = syslog_warn;
-		
 		main_loop = g_main_loop_new(NULL, TRUE);
+
+		tables_init();
+		
+		log_init_syslog();
+		log_set_irc_wrapper(main_loop);
+
+		g_message_syslog("Services booting, pid: %d", getpid());
 
 		g_io_add_watch(me.handle,
 			G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc) net_receive_callback, NULL);
@@ -78,85 +75,25 @@ gint main(gint argc, gchar **argv)
 
 	    case -1:
 		/* error */
-		fatal("fork()");
+		g_errno_critical("fork()");
 
 		return -1;
 
 	    default:
 		/* father */
-		warn("services are daemonizing [pid \1%d\1]\n", pid);
-		
+		g_message("services are daemonizing [pid %d]", pid);
 		exit(EXIT_SUCCESS);
 
 		return 0;
 	}
     }
 
-    fatal("cannot connect to server %s:%d", me.host, me.port);
+    g_critical("cannot connect to server %s:%d", me.host, me.port);
 
-    return 0;
+    return -1;
 }
 
-static void stderr_fatal(gchar *fmt, ...)
+static void signal_handler(gint sig)
 {
-    va_list ap;
-    gint save_errno = errno;
-
-    va_start (ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-
-    fprintf(stderr, ": %s\n", save_errno ? strerror(save_errno) : "Terminated.");
-    exit(EXIT_FAILURE);
-}
-
-static void syslog_fatal(gchar *fmt, ...)
-{
-    va_list ap;
-    gint save_errno = errno;
-    gchar msgbuf[BUFSIZ];
-
-    va_start(ap, fmt);
-    vsnprintf(msgbuf, sizeof(msgbuf), fmt, ap);
-    va_end(ap);
-    
-    syslog(LOG_ERR, "%s: %s", msgbuf, save_errno ? strerror(save_errno) : "Terminated.");
-
-    syslog(LOG_NOTICE, "syslog session closed");
-    closelog();
-
-    exit(EXIT_FAILURE);
-}
-
-static void stderr_warn(gchar *fmt, ...)
-{
-    va_list ap;
-
-    va_start (ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-}
-
-static void syslog_warn(gchar *fmt, ...)
-{
-    va_list ap;
-
-    va_start(ap, fmt);
-    vsyslog(LOG_NOTICE, fmt, ap);
-    va_end(ap);
-}
-
-#ifdef G_CAN_INLINE
-G_INLINE_FUNC
-#endif
-static void syslog_init(void)
-{
-    openlog("sux", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_DAEMON);
-    syslog(LOG_NOTICE, "syslog session opened");
-}
-
-static void exit_func(gint sig)
-{
-    errno = 0;
-    fatal("received signal %d, quitting", sig);
+    g_critical_syslog("received signal %d, quitting", sig);
 }
