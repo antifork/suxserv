@@ -4,7 +4,7 @@ SUBDIRS=src
 ME=sux
 RM=/bin/rm
 
-all:	build
+all:	build $(ME)
 
 build:
 	@for dir in $(SUBDIRS); do \
@@ -14,13 +14,13 @@ build:
 		cd ..; \
 	done;
 	
-	@ln src/$(ME) .
+$(ME):
+	@ln -f src/$(ME) .
 
 	@echo "********************************";
 	@echo "* suuuuuuuuuuuuuuuuuuuuuuuxxx! *";
 	@echo "********************************";
 	@ls -l $(ME);
-
 clean:
 	$(RM) -f $(ME) core $(ME).core;
 	@for dir in $(SUBDIRS); do \
@@ -29,6 +29,7 @@ clean:
 		make clean; \
 		cd ..; \
 	done;
+	@rm -f gmon.out
 
 moo:
 	@echo "         (__) "
