@@ -55,7 +55,6 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <syslog.h>
-#include <stdarg.h>
 #include <errno.h>
 #include <sys/poll.h>
 #include <pthread.h>
