@@ -61,6 +61,7 @@ void __sux_irc_log_handler_generic(const gchar *log_domain, GLogLevelFlags log_l
 
     if(log_level & G_LOG_LEVEL_CRITICAL)
     {
+	send_out("SQUIT %s :%s", me.name, message);
 	STOP_RUNNING();
     }
 }
