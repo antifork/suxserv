@@ -9,27 +9,6 @@
 
 extern gint errno;
 
-void fatal(gchar *fmt, ...)
-{
-    va_list ap;
-    gint save_errno = errno;
-
-    va_start (ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-
-    fprintf(stderr, ": %s\n", save_errno ? strerror(save_errno) : "Terminated.");
-    exit(EXIT_FAILURE);
-}
-
-
-void exit_func(gint sig)
-{
-    fprintf(stderr, "received signal %d, quitting ..\n",
-	    sig);
-    exit(0);
-}
-
 gint main(gint argc, gchar **argv)
 {
     GMainLoop *main_loop;
@@ -66,4 +45,25 @@ gint main(gint argc, gchar **argv)
     fatal("cannot connect to server %s:%d", me.host, me.port);
 
     return 0;
+}
+
+void fatal(gchar *fmt, ...)
+{
+    va_list ap;
+    gint save_errno = errno;
+
+    va_start (ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+
+    fprintf(stderr, ": %s\n", save_errno ? strerror(save_errno) : "Terminated.");
+    exit(EXIT_FAILURE);
+}
+
+
+void exit_func(gint sig)
+{
+    fprintf(stderr, "received signal %d, quitting ..\n",
+	    sig);
+    exit(0);
 }
