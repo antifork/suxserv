@@ -70,7 +70,7 @@ typedef struct mydata
 
     GThread *net_thr, *parse_thr, *sig_thr;
 
-    GMutex *ctx_mutex, *time_mutex;
+    GMutex *tag_mutex, *time_mutex;
     GCond *ctx_cond;
     GPollFD fds[4];
     GMainContext *ctx;
@@ -87,6 +87,24 @@ typedef struct mydata
 EXTERN MyData me;
 
 #define NOW			(me.now)
+
+#ifdef MAIN
+
+#define GLOBAL_RUN_DECLARE()	static gboolean __is_running; static GMutex *__run_mutex
+#define GLOBAL_RUN_INIT()	__is_running = FALSE; __run_mutex = g_mutex_new()
+
+#define __RUN_LOCK()		g_mutex_lock(__run_mutex)
+#define __RUN_UNLOCK()		g_mutex_unlock(__run_mutex)
+
+#define START_RUNNING()		__RUN_LOCK(); __is_running = TRUE; __RUN_UNLOCK()
+#define STOP_RUNNING()		__RUN_LOCK(); __is_running = FALSE; __RUN_UNLOCK()
+
+#define THREAD_RUN_DECLARE()	gboolean __is_thread_running
+#define THREAD_IS_RUNNING()	(__is_thread_running)
+
+#define THREAD_RUN_CHECK()	__RUN_LOCK(); __is_thread_running = __is_running; __RUN_UNLOCK()
+
+#endif /* MAIN */
 
 #undef EXTERN
 #endif
