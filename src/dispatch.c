@@ -187,7 +187,8 @@ gint m_pong(User *u, gint parc, gchar **parv)
 
     if(uplink.ping_tag)
     {
-	g_source_del(&uplink.ping_tag);
+	g_source_del(uplink.ping_tag);
+	uplink.ping_tag = NULL;
 	return 0;
     }
 
@@ -528,7 +529,8 @@ gint m_server(User *u, gint parc, gchar **parv)
 	
 	if(uplink.ping_tag)
 	{
-	    g_source_del(&uplink.ping_tag);
+	    g_source_del(uplink.ping_tag);
+	    uplink.ping_tag = NULL;
 	}
 
 	g_timeout_source_add(PING_FREQUENCY, (GSourceFunc) send_ping, u);
