@@ -161,18 +161,15 @@ GSource *g_timeout_source_add(guint interval, GSourceFunc callback, gpointer use
     return gs;
 }
 
-gboolean g_source_del(GSource **gs)
+void g_source_del(GSource **gs)
 {
-    g_return_val_if_fail(*gs != NULL, FALSE);
+    g_return_if_fail(*gs != NULL);
     
     g_mutex_lock(me.ctx_mutex);
     g_source_destroy(*gs);
     g_source_unref(*gs);
     *gs = NULL;
     g_mutex_unlock(me.ctx_mutex);
-
-
-    return TRUE;
 }
 
 gboolean g_source_del_nolock(GSource **gs)
