@@ -128,6 +128,7 @@ typedef struct slink
 #define SUX_PASS	"codio"
 
 #define SUX_UPLINK_HOST	"twisted.vejnet.org"
+#define SUX_UPLINK_PORT	6667
 #define SUX_UPLINK_NAME "server.dal.net"
 
 #endif /* __sux_h__ */

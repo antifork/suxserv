@@ -29,7 +29,7 @@ gint main(gint argc, gchar **argv)
     strcpy(me.info, SUX_VERSION);
     strcpy(me.host, SUX_UPLINK_HOST);
 
-    me.port = htons(6667);
+    me.port = htons(SUX_UPLINK_PORT);
 
     log_set_tty_wrapper();
 
