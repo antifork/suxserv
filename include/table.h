@@ -97,73 +97,73 @@ struct TABLE
 #define MEM_CHUNK	512
 
 #define INIT_FUNC(NAME, DATA_TYPE, HASH_FUNC)								\
-	G_INLINE_FUNC void NAME##table_init(void)							\
+	G_INLINE_FUNC void NAME##_table_init(void)							\
 	{												\
-	    NAME##table.__mem_pool = g_mem_chunk_create(DATA_TYPE, MEM_CHUNK, G_ALLOC_AND_FREE);	\
-	    NAME##table.__hash_tbl = g_hash_table_new((GHashFunc)HASH_FUNC, g_str_equal);		\
+	    NAME##_table.__mem_pool = g_mem_chunk_create(DATA_TYPE, MEM_CHUNK, G_ALLOC_AND_FREE);	\
+	    NAME##_table.__hash_tbl = g_hash_table_new((GHashFunc)HASH_FUNC, g_str_equal);		\
 	}
 
 #define GET_FUNC(NAME, DATA_TYPE, KEY_TYPE)								\
-	G_INLINE_FUNC DATA_TYPE * NAME##table_get(KEY_TYPE *__ptr)					\
+	G_INLINE_FUNC DATA_TYPE * NAME##_table_get(KEY_TYPE *__ptr)					\
 	{												\
-	    return g_hash_table_lookup(NAME##table.__hash_tbl, __ptr);					\
+	    return g_hash_table_lookup(NAME##_table.__hash_tbl, __ptr);					\
 	}
 
 #define ALLOC_FUNC(NAME, DATA_TYPE, KEY_NAME, KEY_TYPE)							\
-	G_INLINE_FUNC gpointer NAME##table_alloc(KEY_TYPE *__ptr)					\
+	G_INLINE_FUNC gpointer NAME##_table_alloc(KEY_TYPE *__ptr)					\
 	{												\
 	    DATA_TYPE *__p;										\
-	    if((__p = g_hash_table_lookup(NAME##table.__hash_tbl, __ptr)))				\
+	    if((__p = g_hash_table_lookup(NAME##_table.__hash_tbl, __ptr)))				\
 		return NULL;										\
-	    __p = g_mem_chunk_alloc0(NAME##table.__mem_pool);						\
+	    __p = g_mem_chunk_alloc0(NAME##_table.__mem_pool);						\
 	    strcpy(__p->KEY_NAME, __ptr);								\
-	    g_hash_table_insert(NAME##table.__hash_tbl, __p->KEY_NAME, __p);			\
+	    g_hash_table_insert(NAME##_table.__hash_tbl, __p->KEY_NAME, __p);				\
 	    return __p;											\
 	}
 
 #define PUT_FUNC(NAME, DATA_TYPE, KEY_NAME)								\
-	G_INLINE_FUNC void NAME##table_put(DATA_TYPE *__p)						\
+	G_INLINE_FUNC void NAME##_table_put(DATA_TYPE *__p)						\
 	{												\
-	    g_hash_table_insert(NAME##table.__hash_tbl, __p->KEY_NAME, __p);			\
+	    g_hash_table_insert(NAME##_table.__hash_tbl, __p->KEY_NAME, __p);				\
 	}
 
 #define DEL_FUNC(NAME, DATA_TYPE, KEY_NAME)								\
-	G_INLINE_FUNC gboolean NAME##table_del(DATA_TYPE *__p)						\
+	G_INLINE_FUNC gboolean NAME##_table_del(DATA_TYPE *__p)						\
 	{												\
-	    return g_hash_table_remove(NAME##table.__hash_tbl, __p->KEY_NAME);			\
+	    return g_hash_table_remove(NAME##_table.__hash_tbl, __p->KEY_NAME);				\
 	}
 
 #define DESTROY_FUNC(NAME, DATA_TYPE)									\
-	G_INLINE_FUNC void NAME##table_destroy(DATA_TYPE *__p)						\
+	G_INLINE_FUNC void NAME##_table_destroy(DATA_TYPE *__p)						\
 	{												\
-	    g_mem_chunk_free(NAME##table.__mem_pool, __p);						\
+	    g_mem_chunk_free(NAME##_table.__mem_pool, __p);						\
 	}
 
 #define CLEAN_FUNC(NAME)										\
-	G_INLINE_FUNC void NAME##table_clean(void)							\
+	G_INLINE_FUNC void NAME##_table_clean(void)							\
 	{												\
-	    g_hash_table_destroy(NAME##table.__hash_tbl);						\
-	    g_mem_chunk_destroy(NAME##table.__mem_pool);						\
+	    g_hash_table_destroy(NAME##_table.__hash_tbl);						\
+	    g_mem_chunk_destroy(NAME##_table.__mem_pool);						\
 	}
 
 #define SETUP_FUNC(NAME)										\
-	void NAME##table_setup(void)									\
+	void NAME##_table_setup(void)									\
 	{												\
-	    NAME##table.get = (table_get_f)NAME##table_get;						\
-	    NAME##table.put = (table_put_f)NAME##table_put;						\
-	    NAME##table.alloc = (table_alloc_f)NAME##table_alloc;					\
-	    NAME##table.del = (table_del_f)NAME##table_del;						\
-	    NAME##table.destroy = (table_destroy_f)NAME##table_destroy;					\
-	    NAME##table.init = (table_init_f)NAME##table_init;						\
-	    NAME##table.clean = (table_clean_f)NAME##table_clean;					\
+	    NAME##_table.get = (table_get_f)NAME##_table_get;						\
+	    NAME##_table.put = (table_put_f)NAME##_table_put;						\
+	    NAME##_table.alloc = (table_alloc_f)NAME##_table_alloc;					\
+	    NAME##_table.del = (table_del_f)NAME##_table_del;						\
+	    NAME##_table.destroy = (table_destroy_f)NAME##_table_destroy;					\
+	    NAME##_table.init = (table_init_f)NAME##_table_init;						\
+	    NAME##_table.clean = (table_clean_f)NAME##_table_clean;					\
 	    												\
-	    NAME##table.init();										\
+	    NAME##_table.init();										\
 	}
 
-#define LOCAL_TABLE_INSTANCE(NAME)	TABLE_T NAME##table;
-#define REMOTE_TABLE_INSTANCE(NAME)	extern TABLE_T NAME##table;
+#define LOCAL_TABLE_INSTANCE(NAME)	TABLE_T NAME##_table;
+#define REMOTE_TABLE_INSTANCE(NAME)	extern TABLE_T NAME##_table;
 
-#define TABLE_DECLARE(NAME, DATA_TYPE, HASH_FUNC, KEY_NAME, KEY_TYPE)	\
+#define TABLE_DECLARE(NAME, DATA_TYPE, HASH_FUNC, KEY_NAME, KEY_TYPE);	\
 	LOCAL_TABLE_INSTANCE(NAME)					\
 	INIT_FUNC(NAME, DATA_TYPE, HASH_FUNC)				\
 	GET_FUNC(NAME, DATA_TYPE, KEY_TYPE)				\
@@ -172,10 +172,19 @@ struct TABLE
 	DEL_FUNC(NAME, DATA_TYPE, KEY_NAME)				\
 	DESTROY_FUNC(NAME, DATA_TYPE)					\
 	CLEAN_FUNC(NAME)						\
-	SETUP_FUNC(NAME)						\
+	SETUP_FUNC(NAME)						
 
-#define TABLE_SETUP_FUNC(NAME)	NAME##table_setup()
-    
+#define TABLE_SETUP_FUNC(NAME)	NAME##_table_setup()
+
+#define _TBL(NAME)		(NAME##_table)
+#define _MPL(NAME)		(NAME##_pool)
+
+#define LOCAL_MEMPOOL_INSTANCE(NAME)		GMemChunk *NAME##_pool
+#define REMOTE_MEMPOOL_INSTANCE(NAME)		extern GMemChunk *NAME##_pool
+#define MEMPOOL_DECLARE				LOCAL_MEMPOOL_INSTANCE
+
+#define MEMPOOL_SETUP_FUNC(NAME, DATA_TYPE)	\
+		NAME##_pool = g_mem_chunk_create(DATA_TYPE, MEM_CHUNK, G_ALLOC_AND_FREE)
 
 void tables_init(void);
 
