@@ -12,6 +12,7 @@ extern gint errno;
 
 static void signal_handler(gint);
 static void setup_signals(void);
+static void setup_allocators(void);
 
 gint main(gint argc, gchar **argv)
 {
@@ -30,8 +31,6 @@ gint main(gint argc, gchar **argv)
 
     me.port = htons(6667);
 
-    setup_signals();
-
     log_set_tty_wrapper();
 
     if((me.handle = connect_server(me.host, me.port)))
@@ -42,6 +41,9 @@ gint main(gint argc, gchar **argv)
 	{
 	    case 0:
 		/* child */
+		
+		setup_signals();
+		setup_allocators();
 
 		fflush(stdout);
 		fflush(stderr);
@@ -123,3 +125,11 @@ static void setup_signals(void)
     signal(SIGTERM, signal_handler);
 }
 
+static void setup_allocators(void)
+{
+    static GAllocator *gsl_all;
+    
+    gsl_all = g_allocator_new("GSList allocator", 4096);
+
+    g_slist_push_allocator(gsl_all);
+}
