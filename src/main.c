@@ -80,18 +80,18 @@ gint main(gint argc, gchar **argv)
 	GError *err = NULL;
 	gint *received_signal = NULL;
 
-	switch(fork())
+	switch(0)//fork())
 	{
 	    case 0:
 		/* child */		
 		g_thread_init(NULL);
 		
-		setup_allocators();
-		setup_netbuf();
-		setup_tables();
-		setup_fds();
-		setup_mutexes();
 		setup_signals();
+		setup_mutexes();
+		setup_fds();
+		setup_allocators();
+		setup_tables();
+		setup_netbuf();
 		
 		log_set_irc_wrapper();
 		
@@ -216,6 +216,8 @@ static int start_net_thread(void)
     gboolean some_ready;
     gint nfds, allocated_nfds = 4;
 
+    setup_signals();
+
     g_mutex_lock(me.ctx_mutex);
     me.ctx = g_main_context_new();
     g_main_context_ref(me.ctx);
@@ -280,6 +282,8 @@ static int start_parse_thread(void)
     gchar **strings = g_new0(gchar *, STRINGS_PER_CYCLE);
     GString *read_data = g_string_sized_new(READBUFSZ);
     gint i, count;
+
+    setup_signals();
 
     while(TRUE)
     {
