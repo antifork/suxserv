@@ -146,7 +146,7 @@ static void setup_allocators(void)
 {
     static GAllocator *gsl_all;
     
-    gsl_all = g_allocator_new("GSList allocator", 4096);
+    gsl_all = g_allocator_new("GSList allocator", 1024);
 
     g_slist_push_allocator(gsl_all);
 }
@@ -209,19 +209,22 @@ static void spawn_threads(void)
 
     is_running = TRUE;
 
-    me.net_thr = g_thread_create((GThreadFunc)start_net_thread, NULL, TRUE, &err);
+    me.net_thr = g_thread_create_full((GThreadFunc)start_net_thread,
+	    NULL, 0, TRUE, TRUE, G_THREAD_PRIORITY_NORMAL, &err);
     if(me.net_thr == NULL)
     {
 	exit(-1);
     }
 
-    me.parse_thr = g_thread_create((GThreadFunc)start_parse_thread, NULL, TRUE, &err);
+    me.parse_thr = g_thread_create_full((GThreadFunc)start_parse_thread,
+	    NULL, 0, TRUE, TRUE, G_THREAD_PRIORITY_NORMAL, &err);
     if(me.parse_thr == NULL)
     {
 	exit(-1);
     }
 
-    me.sig_thr = g_thread_create((GThreadFunc)start_sig_thread, NULL, FALSE, &err);
+    me.sig_thr = g_thread_create_full((GThreadFunc)start_sig_thread,
+	    NULL, 0, FALSE, TRUE, G_THREAD_PRIORITY_LOW, &err);
     if(me.sig_thr == NULL)
     {
 	exit(-1);
