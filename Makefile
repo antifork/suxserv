@@ -38,4 +38,4 @@ moo:
 	@echo "  / |    ||   "
 	@echo " *  /\---/\ "
 	@echo "    ~~   ~~   "
-	@echo "....`Have you mooed today?'..."
+	@echo "....'Have you mooed today?'..."
