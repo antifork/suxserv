@@ -227,8 +227,8 @@ static void list_free_atoms(gpointer *data, GMemChunk *chunk)
 
 static gboolean remove_user_from_channel(Channel *c, User *u)
 {
-    GSList *johnny; /* the walker */
-    ChanMember *cm;
+    register GSList *johnny; /* the walker */
+    register ChanMember *cm;
 
     for(johnny = c->members; johnny; johnny = g_slist_next(johnny))
     {
@@ -260,7 +260,7 @@ static gboolean remove_user_from_channel(Channel *c, User *u)
 
 static gboolean remove_channel_from_user_chanlist(Channel *c, User *u)
 {
-    GSList *johnny; /* the walker */
+    register GSList *johnny; /* walker */
 
     /* remove this channel from user chanlist */
     for(johnny = u->channels; johnny; johnny = g_slist_next(johnny))
@@ -287,8 +287,8 @@ static gboolean remove_channel_from_user_chanlist(Channel *c, User *u)
  */
 gint m_quit(User *u, gint parc, gchar **parv)
 {
-    Channel *c;
-    GSList *johnny; /* the walker */
+    register GSList *johnny; /* walker */
+    register Channel *c;
 
     g_return_val_if_fail(u != NULL, 0);
 
@@ -747,7 +747,7 @@ gint m_sjoin(User *u, gint parc, gchar **parv)
     users_arr = g_strsplit(users, " ", 0);
     for(i = 0; users_arr[i] != NULL; i++)
     {
-	gint fl;
+	gint fl = 0;
 	
 	s = users_arr[i];
 
@@ -854,7 +854,7 @@ gint m_whois(User *u, gint parc, gchar **parv)
 	    johnny = g_slist_next(johnny))
     {
 	c = ((SLink*)johnny->data)->value.c;
-	if(len + strlen(c->chname) > (gsize_t) BUFSIZE - 4 - mlen)
+	if(len + strlen(c->chname) > (gsize) BUFSIZE - 4 - mlen)
 	{
 	    send_out(":%s %d %s %s :%s",
 		    me.name, RPL_WHOISCHANNELS,

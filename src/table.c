@@ -14,7 +14,7 @@
 
 G_INLINE_FUNC guint FNV_hash(guchar *s)
 {
-    guint h = 0;
+    register guint h = 0;
     guchar *e = s + strlen(s) - 1;
 
     while(e != s)
