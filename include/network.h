@@ -1,6 +1,8 @@
 #ifndef __network_h__
 #define __network_h__
 
+#define IOBUFSIZE 32768
+
 GIOChannel *connect_server(gchar *, guint);
 
 gboolean net_send_callback(GIOChannel *);

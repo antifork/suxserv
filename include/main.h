@@ -2,7 +2,6 @@
 #define __main_h__
 
 #define BUFSIZE 512
-#define IOBUFSIZE 32768
 
 #ifndef MAIN
 # define EXTERN extern
