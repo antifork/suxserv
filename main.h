@@ -18,7 +18,7 @@ typedef struct mydata
     char host[HOSTLEN];
     char name[HOSTLEN];
     char info[INFOLEN];
-    char pass[PASSLEN];
+    char pass[NICKLEN];
     char uplink[HOSTLEN];
     unsigned short port;
     
