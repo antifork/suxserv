@@ -45,6 +45,13 @@ gint main(gint argc, gchar **argv)
 		/* child */
 		syslog_init();
 		tables_init();
+
+		fflush(stdout);
+		fflush(stderr);
+
+		close(0);
+		close(1);
+		close(2);
 		
 		fatal = syslog_fatal;
 		warn = syslog_warn;
@@ -133,13 +140,10 @@ static void stderr_warn(gchar *fmt, ...)
 static void syslog_warn(gchar *fmt, ...)
 {
     va_list ap;
-    gchar msgbuf[BUFSIZ];
 
     va_start(ap, fmt);
-    vsnprintf(msgbuf, sizeof(msgbuf), fmt, ap);
+    vsyslog(LOG_NOTICE, fmt, ap);
     va_end(ap);
-
-    syslog(LOG_NOTICE, "%s", msgbuf);
 }
 
 #ifdef G_CAN_INLINE
