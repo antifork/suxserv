@@ -105,4 +105,13 @@ typedef struct slink
     gint flags;
 } SLink;
 
+#define SUX_MODULE	"Sux Core Services"
+#define SUX_RELEASE	"0.02"
+#define SUX_VERSION	SUX_MODULE " " SUX_RELEASE
+
+#define SUX_SERV_NAME	"services.azzurra.org"
+#define SUX_PASS	"codio"
+
+#define SUX_UPLINK	"twisted.vejnet.org"
+
 #endif /* __sux_h__ */

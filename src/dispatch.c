@@ -264,7 +264,7 @@ gint m_motd(gint parc, gchar **parv)
     gint i;
     gchar *motd[] = 
     {
-	"MOTD: Sux Services ver 0.01.",
+	"MOTD: " SUX_VERSION,
 	"This is the default MOTD.",
 	"To edit it, RTFS.",
 	NULL
@@ -277,7 +277,7 @@ gint m_motd(gint parc, gchar **parv)
     for (i = 0; i < 20; i++)
     {	
 	send_out(rpl_str(RPL_MOTD), me.name, parv[0],
-		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+		"SuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSux");
     }
     send_out(rpl_str(RPL_ENDOFMOTD), me.name, parv[0]);
     return 0;
@@ -308,20 +308,23 @@ gint m_info(gint parc, gchar **parv)
     gint i;
     gchar *info[] = 
     {
-	"INFO: Sux Services ver 0.01.",
+	"INFO: " SUX_VERSION,
 	"Coded and recoded by a nice coder =).",
 	"mailto: vjt@azzurra.org",
 	NULL
     };
+
     for (i = 0; info[i] != NULL; i++)
     {
 	send_out(rpl_str(RPL_INFO), me.name, parv[0], info[i]);
     }
+
     for (i = 0; i < 20; i++)
     {
 	send_out(rpl_str(RPL_INFO), me.name, parv[0],
-		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+		"SuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSuxSux");
     }
+
     send_out(rpl_str(RPL_ENDOFINFO), me.name, parv[0]);
     return 0;
 }
@@ -334,7 +337,7 @@ gint m_stats(gint parc, gchar **parv)
 gint m_version(gint parc, gchar **parv)
 {
     send_out(rpl_str(RPL_VERSION),
-	    me.name, parv[0], me.info);
+	    me.name, parv[0], SUX_VERSION);
     return 0;
 }
 gint m_squit(gint parc, gchar **parv)
