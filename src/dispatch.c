@@ -117,9 +117,7 @@ gint m_ping(User *u, gint parc, gchar **parv)
     if(uplink.flags & (FLAGS_SOBSENT|~FLAGS_BURST))
     {
 	uplink.flags &= ~FLAGS_SOBSENT;
-	send_out("BURST %d",
-		g_io_channel_get_buffer_condition(me.handle) & G_IO_OUT ?
-		me.handle->write_buf->len : 0);
+	send_out("BURST %d", me.sendQ->len);
     }
 
     send_out(":%s PONG :%s", me.name, parv[1]);
