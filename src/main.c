@@ -79,7 +79,7 @@ gint main(gint argc, gchar **argv)
 
     if((me.handle = connect_server(me.host, me.port)))
     {
-	switch(0)//fork())
+	switch(fork())
 	{
 	    case 0:
 		/* child */		
@@ -160,7 +160,7 @@ static void setup_fds(void)
     /*close(2);*/
 }
 
-static void my_g_main_context_iteration(void)
+G_INLINE_FUNC void my_g_main_context_iteration(void)
 {
     gint max_priority;
     gint timeout;
@@ -339,6 +339,9 @@ static int start_parse_thread(void)
 
 	if(!me.recvQ->len)
 	{
+	    /*
+	     * possibly are we terminated ?
+	     */
 	    g_mutex_unlock(me.readbuf_mutex);
 	    
 	    g_mutex_lock(run_mutex);
@@ -368,7 +371,7 @@ static int start_parse_thread(void)
 	    parse(strings[i]);
 	}
 
-	memset((gpointer)strings, 0x0, sizeof(gchar*) * STRINGS_PER_CYCLE);
+	//memset((gpointer)strings, 0x0, sizeof(gchar*) * STRINGS_PER_CYCLE);
 	g_string_erase(read_data, 0, -1);
 
 	g_mutex_lock(run_mutex);
