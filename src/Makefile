@@ -16,7 +16,14 @@ main: main.c
 build: all
 
 clean:
-	$(RM) -f $(OBJECTS) *~ $(ME).core core $(ME) parse.c *.da a.out gmon.out
+#remove objs
+	$(RM) -f $(OBJECTS) 
+
+#remove cores and stale sources
+	$(RM) -f *~ $(ME).core core $(ME) parse.c
+
+#remove gperf crap
+	$(RM) -f *.da a.out gmon.out
 
 parse.c: parse.gperf
 	gperf -tDW cmds -N hash_get_cmd -K cmd parse.gperf > parse.c
