@@ -47,7 +47,7 @@
 GIOChannel *connect_server(gchar *host, guint port)
 {
     struct sockaddr_in sock, my_addr;
-    gint fd, nb;
+    gint fd;
     socklen_t namelen = sizeof(my_addr);
     GIOChannel *ret;
 
@@ -87,11 +87,6 @@ GIOChannel *connect_server(gchar *host, guint port)
 
     if(getsockname(fd, (struct sockaddr *)&my_addr, &namelen) < 0)
 	g_errno_critical("getsockname()");
-
-    if((nb = fcntl(fd, F_GETFL, 0)) < 0)
-	g_errno_critical("fcntl(F_GETFL)");
-    else if(fcntl(fd, F_SETFL, nb | O_NONBLOCK) < 0)
-	g_errno_critical("fcntl(F_SETFL, nb | O_NONBLOCK)");
 
     g_message_syslog("Connection established");
 
