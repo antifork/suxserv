@@ -17,7 +17,7 @@
  * 
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement:
- *    This product includes software developed by Chip Norkus.
+ *    This product includes software developed by Barnaba Marcello.
  * 
  * 4. The names of the maintainer, developers and contributors may not be
  *    used to endorse or promote products derived from this software
@@ -50,61 +50,37 @@
 
 typedef struct mydata
 {
-    time_t boot;
-    GIOChannel *handle;
+    /* IRC related things */
+    time_t boot, now;
 
     gchar host[HOSTLEN],
-    	name[HOSTLEN],
+	hostip[HOSTLEN],
+	name[HOSTLEN],
 	info[INFOLEN],
 	pass[NICKLEN];
 
-    User *uplink, *serv_ptr;
-	
-    gushort port;
+    User *uplink, *table_ptr;
+
+    /* MainContext related things */
+    GIOChannel *handle;
 
     GSource *send_tag,
     	*recv_tag,
 	*err_tag;
+    GMutex *tag_mutex;
 
+    /* Buffering related things */
     GString *sendQ, *recvQ;
-
-    GThread *net_thr, *parse_thr, *sig_thr;
-
-    GMutex *ctx_mutex;//, *time_mutex;
-    GCond *ctx_cond;
-    GPollFD fds[4];
-    GMainContext *ctx;
 
     GCond *readbuf_cond;
     GMutex *readbuf_mutex;
     GMutex *writebuf_mutex;
 
-    GAsyncQueue *sig_queue;
-
-    time_t now;
 } MyData;
 
 EXTERN MyData me;
 
 #define NOW			(me.now)
-
-#ifdef MAIN
-
-#define GLOBAL_RUN_DECLARE()	static gboolean __is_running; static GMutex *__run_mutex
-#define GLOBAL_RUN_INIT()	__is_running = FALSE; __run_mutex = g_mutex_new()
-
-#define __RUN_LOCK()		g_mutex_lock(__run_mutex)
-#define __RUN_UNLOCK()		g_mutex_unlock(__run_mutex)
-
-#define START_RUNNING()		__RUN_LOCK(); __is_running = TRUE; __RUN_UNLOCK()
-#define STOP_RUNNING()		__RUN_LOCK(); __is_running = FALSE; __RUN_UNLOCK()
-
-#define THREAD_RUN_DECLARE()	gboolean __is_thread_running
-#define THREAD_IS_RUNNING()	(__is_thread_running)
-
-#define THREAD_RUN_CHECK()	__RUN_LOCK(); __is_thread_running = __is_running; __RUN_UNLOCK()
-
-#endif /* MAIN */
 
 #undef EXTERN
 #endif
