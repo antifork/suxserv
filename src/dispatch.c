@@ -840,7 +840,7 @@ gint m_join(User *u, gint parc, gchar **parv)
 
     while(johnny)
     {
-	remove_user_from_channel(u, ((SLink*)johnny->data)->value.c);
+	remove_user_from_channel(((SLink*)johnny->data)->value.c, u);
 	johnny = g_slist_next(johnny);
     }
 
