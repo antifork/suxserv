@@ -29,6 +29,7 @@ TABLE_DECLARE(user, User, FNV_hash, nick, gchar);
 TABLE_DECLARE(channel, Channel, FNV_hash, chname, gchar);
 
 MEMPOOL_DECLARE(cmembers);
+MEMPOOL_DECLARE(links);
     
 void tables_init(void)
 {
@@ -36,4 +37,5 @@ void tables_init(void)
     TABLE_SETUP_FUNC(channel);
 
     MEMPOOL_SETUP_FUNC(cmembers, ChanMember);
+    MEMPOOL_SETUP_FUNC(links, SLink);
 }
