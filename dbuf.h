@@ -17,10 +17,11 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 /* $Id$ */
-#ifndef __dbuf_h__
-#define __dbuf_h__
+#ifndef INCLUDED_dbuf_h
+#define INCLUDED_dbuf_h
 
-#define IsEol(c) (c==10||c==13)
+#include "sux.h"
+
 /*
 ** dbuf is a collection of functions which can be used to
 ** maintain a dynamic buffering of a byte stream.
@@ -37,11 +38,10 @@ struct DBufBuffer;
 ** implementation of this package without changing the
 ** interface.
 */
-struct DBuf 
-{
-    struct DBufBuffer* head;   /* First data buffer, if length > 0 */
-    struct DBufBuffer* tail;   /* last data buffer, if length > 0 */
-    size_t             length; /* Current number of bytes stored */
+struct DBuf {
+  struct DBufBuffer* head;   /* First data buffer, if length > 0 */
+  struct DBufBuffer* tail;   /* last data buffer, if length > 0 */
+  size_t             length; /* Current number of bytes stored */
 };
 
 extern int DBufCount;
@@ -103,7 +103,7 @@ extern size_t dbuf_get(struct DBuf* dbuf, char* buf, size_t len);
  * dyn - Dynamic buffer header
  * len - Return number of bytes accessible 
  */
-extern char* dbuf_map(struct DBuf* dyn, size_t* len);
+extern const char* dbuf_map(const struct DBuf* dyn, size_t* len);
 extern void        dbuf_delete(struct DBuf* dyn, size_t len);
 
 /*
@@ -125,4 +125,4 @@ extern int  dbuf_getmsg(struct DBuf* dyn, char* buf, size_t len);
 extern void dbuf_init(void);
 extern void count_dbuf_memory(size_t* allocated, size_t* used);
 
-#endif /* __dbuf_h__ */
+#endif /* INCLUDED_dbuf_h */
