@@ -5,15 +5,46 @@
 #include "main.h"
 #include "log.h"
 
-void __sux_irc_log_handler(const gchar *log_domain, GLogLevelFlags log_level,
-	const gchar *message, GMainLoop *main_loop)
+void __sux_gen_log_handler_error(const gchar *log_domain, GLogLevelFlags log_level,
+	const gchar *message)
 {
-    gchar *err_type = NULL;
-    gint save_errno = errno;
+    syslog(LOG_NOTICE, "%s: Fatal: %s", log_domain, message);
+
+    abort();
+}
+
+void __sux_gen_log_handler_message_syslog(const gchar *log_domain, GLogLevelFlags log_level,
+	const gchar *message)
+{
+    syslog(LOG_NOTICE, "%s: Message: %s", log_domain, message);
+}
+
+
+void __sux_irc_log_handler_critical_errno(const gchar *log_domain, GLogLevelFlags log_level,
+	const gchar *message)
+{
+    gchar *errstr = strerror(errno);
+
+    send_out(":%s GLOBOPS :[%s] Critical: %s (%s)",
+	    me.name, log_domain, message, errstr);
     
-    if(log_level & G_LOG_LEVEL_ERROR)
-	err_type = "Error";
-    else if(log_level & G_LOG_LEVEL_CRITICAL)
+    send_out("SQUIT %s :%s (%s)", me.name, message, errstr);
+    STOP_RUNNING();
+}
+
+void __sux_irc_log_handler_critical_syslog(const gchar *log_domain, GLogLevelFlags log_level,
+	const gchar *message)
+{
+    syslog(LOG_NOTICE, "%s: Critical: %s", log_domain, message);
+    STOP_RUNNING();
+}
+
+void __sux_irc_log_handler_generic(const gchar *log_domain, GLogLevelFlags log_level,
+	const gchar *message)
+{
+    gchar *err_type;
+
+    if(log_level & G_LOG_LEVEL_CRITICAL)
 	err_type = "Critical";
     else if(log_level & G_LOG_LEVEL_WARNING)
 	err_type = "Warning";
@@ -26,54 +57,37 @@ void __sux_irc_log_handler(const gchar *log_domain, GLogLevelFlags log_level,
     else
 	err_type = "Unknown";
 
-    if(log_level & G_LOG_LEVEL_SYSLOG)
-    {
-	if(log_level & G_LOG_LEVEL_ERRNO)
-	{
-	    syslog(LOG_NOTICE, "%s: %s: %s", log_domain, message, strerror(save_errno));
-	}
-	else
-	{
-	    syslog(LOG_NOTICE, "%s: %s", log_domain, message);
-	}
-	
-    }
-    else
-    {
-	if(log_level & G_LOG_LEVEL_ERRNO)
-	{
-	    send_out(":%s GLOBOPS :[%s] %s: %s (%s)",
-		    me.name, log_domain, err_type, message, strerror(save_errno));
-	}
-	else
-	{
-	    send_out(":%s GLOBOPS :[%s] %s: %s",
-		    me.name, log_domain, err_type, message);
-	}
-    }
-
-    if(log_level & G_LOG_LEVEL_ERROR)
-    {
-	g_main_loop_quit(main_loop);
-	abort();
-    }
+    send_out(":%s GLOBOPS :[%s] %s: %s", me.name, log_domain, err_type, message);
 
     if(log_level & G_LOG_LEVEL_CRITICAL)
     {
-	g_main_loop_quit(main_loop);
-	exit(EXIT_FAILURE);
+	STOP_RUNNING();
     }
 }
 
-void __sux_tty_log_handler(const gchar *log_domain, GLogLevelFlags log_level,
+
+void __sux_tty_log_handler_critical_errno(const gchar *log_domain, GLogLevelFlags log_level,
 	const gchar *message)
 {
-    gchar *err_type = NULL;
-    gint save_errno = errno;
-    
-    if(log_level & G_LOG_LEVEL_ERROR)
-	err_type = "Error";
-    else if(log_level & G_LOG_LEVEL_CRITICAL)
+    gchar *errstr = strerror(errno);
+
+    fprintf(stderr, "[%s] Critical: %s (%s)\n", log_domain, message, errstr);
+    exit(-1);
+}
+
+void __sux_tty_log_handler_critical_syslog(const gchar *log_domain, GLogLevelFlags log_level,
+	const gchar *message)
+{
+    syslog(LOG_NOTICE, "%s: Critical: %s\n", log_domain, message);
+    exit(-1);
+}
+
+void __sux_tty_log_handler_generic(const gchar *log_domain, GLogLevelFlags log_level,
+	const gchar *message)
+{
+    gchar *err_type;
+
+    if(log_level & G_LOG_LEVEL_CRITICAL)
 	err_type = "Critical";
     else if(log_level & G_LOG_LEVEL_WARNING)
 	err_type = "Warning";
@@ -86,26 +100,53 @@ void __sux_tty_log_handler(const gchar *log_domain, GLogLevelFlags log_level,
     else
 	err_type = "Unknown";
 
-    if(log_level & G_LOG_LEVEL_ERRNO)
-    {
-	fprintf(stderr, "[%s] %s: %s (%s)\n",
-		log_domain, err_type, message, strerror(save_errno));
-    }
-    else
-    {
-	fprintf(stderr, "[%s] %s: %s\n",
-		log_domain, err_type, message);
-    }
-
-    if(log_level & G_LOG_LEVEL_ERROR)
-    {
-	fprintf(stderr, "aborting ...\n");
-	abort();
-    }
+    fprintf(stderr, "[%s] %s: %s\n", log_domain, err_type, message);
 
     if(log_level & G_LOG_LEVEL_CRITICAL)
     {
-	fprintf(stderr, "exiting ...\n");
-	exit(EXIT_FAILURE);
+	exit(-1);
     }
+}
+
+
+void log_set_irc_wrapper(void)
+{
+    openlog("sux", LOG_NDELAY | LOG_NOWAIT | LOG_PID, LOG_DAEMON);
+    
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_ERROR | G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION,
+	    (GLogFunc) __sux_gen_log_handler_error, NULL);
+
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_SYSLOG_MESSAGE | G_LOG_FLAG_RECURSION,
+	    (GLogFunc) __sux_gen_log_handler_message_syslog, NULL);
+
+    
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_ERRNO_CRITICAL | G_LOG_FLAG_RECURSION,
+	    (GLogFunc) __sux_irc_log_handler_critical_errno, NULL);
+    
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_SYSLOG_CRITICAL | G_LOG_FLAG_RECURSION,
+	    (GLogFunc) __sux_irc_log_handler_critical_syslog, NULL);
+    
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING | G_LOG_LEVEL_CRITICAL |
+	    G_LOG_LEVEL_MESSAGE | G_LOG_LEVEL_INFO | G_LOG_LEVEL_DEBUG | G_LOG_FLAG_RECURSION, 
+	    (GLogFunc) __sux_irc_log_handler_generic, NULL);
+}
+
+void log_set_tty_wrapper(void)
+{
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_ERROR | G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION,
+	    (GLogFunc) __sux_gen_log_handler_error, NULL);
+
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_SYSLOG_MESSAGE | G_LOG_FLAG_RECURSION,
+	    (GLogFunc) __sux_gen_log_handler_message_syslog, NULL);
+
+    
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_ERRNO_CRITICAL | G_LOG_FLAG_RECURSION,
+	    (GLogFunc) __sux_tty_log_handler_critical_errno, NULL);
+    
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_SYSLOG_CRITICAL | G_LOG_FLAG_RECURSION,
+	    (GLogFunc) __sux_tty_log_handler_critical_syslog, NULL);
+    
+    g_log_set_handler(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING | G_LOG_LEVEL_CRITICAL | 
+	    G_LOG_LEVEL_MESSAGE | G_LOG_LEVEL_INFO | G_LOG_LEVEL_DEBUG | G_LOG_FLAG_RECURSION, 
+	    (GLogFunc) __sux_tty_log_handler_generic, NULL);
 }
