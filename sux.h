@@ -1,6 +1,7 @@
 #ifndef __sux_h__
 #define __sux_h__
 
+#include <glib.h>
 #include "os.h"
 #include "memory.h"
 
