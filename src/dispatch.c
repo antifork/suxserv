@@ -822,6 +822,31 @@ static void add_user_to_channel(User *u, Channel *c, guint flags)
 //    g_fprintf(stderr, "add %s -> %s\n", u->nick, c->chname);
 }
 
+
+/*
+ * m_join 
+ * parv[0] = sender prefix
+ * parv[1] = channel
+ * parv[2] = channel password (key)
+ */
+gint m_join(User *u, gint parc, gchar **parv)
+{
+    /* handle only `:user JOIN 0' case */
+    GSList *johnny;
+    g_return_val_if_fail(*parv[1] != '0', -1);
+
+    johnny = u->channels;
+    g_return_val_if_fail(u->channels != NULL, -1);
+
+    while(johnny)
+    {
+	remove_user_from_channel(u, ((SLink*)johnny->data)->value.c);
+	johnny = g_slist_next(johnny);
+    }
+
+    return 0;
+}
+
 /*
  * m_sjoin 
  * parv[0] - sender 

@@ -75,6 +75,7 @@ PONG, m_pong, 0
 PRIVMSG, m_private, 0
 QUIT, m_quit, 0
 KILL, m_kill, 0
+JOIN, m_join, 0
 SJOIN, m_sjoin, 0
 SQUIT, m_squit, 0
 STATS, m_stats, 0

@@ -62,6 +62,7 @@ extern gint  m_squit(User *, gint, gchar **);
 extern gint  m_pass(User *, gint, gchar **);
 extern gint  m_motd(User *, gint, gchar **);
 extern gint  m_svinfo(User *, gint, gchar **);
+extern gint  m_join(User *, gint, gchar **);
 extern gint  m_sjoin(User *, gint, gchar **);
 extern gint  m_time(User *, gint, gchar **);
 extern gint  m_capab(User *, gint, gchar **);
