@@ -5,6 +5,7 @@
 #include "numeric.h"
 #include "log.h"
 #include "match.h"
+#include "network.h"
 
 #define DUMMY return 0;
 
@@ -14,7 +15,7 @@ REMOTE_TABLE_INSTANCE(channel);
 REMOTE_MEMPOOL_INSTANCE(cmembers);
 REMOTE_MEMPOOL_INSTANCE(links);
 
-gint m_private(gint parc, gchar **parv)
+gint m_private(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
@@ -27,7 +28,7 @@ gint m_private(gint parc, gchar **parv)
  * parv[3]: ts
  * parv[4]: topic text
  */
-gint m_topic(gint parc, gchar **parv)
+gint m_topic(User *u, gint parc, gchar **parv)
 {
     Channel *c;
     gchar *chname;
@@ -58,25 +59,26 @@ gint m_topic(gint parc, gchar **parv)
     return 1;
 }
 
-gint m_join(gint parc, gchar **parv)
+gint m_join(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_mode(gint parc, gchar **parv)
+gint m_mode(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_ping(gint parc, gchar **parv)
+
+gint m_ping(User *u, gint parc, gchar **parv)
 {
-    send_out(":%s PONG :%s",
-	    me.name, parv[1]);
+    send_out(":%s PONG :%s", me.name, parv[1]);
     return 1;
 }
-gint m_pong(gint parc, gchar **parv)
+
+gint m_pong(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_kick(gint parc, gchar **parv)
+gint m_kick(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
@@ -100,13 +102,13 @@ gint m_kick(gint parc, gchar **parv)
  * parv[9] = ircname
  * -- endif
  */
-gint m_nick(gint parc, gchar **parv)
+gint m_nick(User *u, gint parc, gchar **parv)
 {
-    User *u;
-
     if(parc > 3)
     {
 	/* new user. */
+	g_return_val_if_fail(u == NULL, -1);
+	
 	if((u = _TBL(user).get(parv[1])))
 	{
 	    /* uh ? we already have this ? */
@@ -130,22 +132,16 @@ gint m_nick(gint parc, gchar **parv)
     else
     {
 	/* nick change */
-	if((u = _TBL(user).get(parv[0])))
-	{
-	    if(!_TBL(user).del(u))
-		abort();
+	g_return_val_if_fail(u != NULL, -1);
 
-	    strcpy(u->nick, parv[1]);
-	    u->ts = strtoul(parv[2], NULL, 10);
-	    _TBL(user).put(u);
+	if(!_TBL(user).del(u))
+	    g_error("cannot delete user");
 
-	    return 1;
-	}
-	else
-	{
-	    send_out(":%s KILL %s :%s %s<-(?)", me.name, parv[1], me.name, parv[1]);
-	    return 0;
-	}
+	strcpy(u->nick, parv[1]);
+	u->ts = strtoul(parv[2], NULL, 10);
+	_TBL(user).put(u);
+
+	return 1;
     }
 }
 
@@ -154,16 +150,24 @@ gint m_nick(gint parc, gchar **parv)
  * parv[0] = sender prefix
  * parv[1] = message
  */
-gint m_error(gint parc, gchar **parv)
+gint m_error(User *u, gint parc, gchar **parv)
 {
     g_critical_syslog("%s", parv[1]);
 
     return 0;
 }
 
-gint m_notice(gint parc, gchar **parv)
+gint m_notice(User *u, gint parc, gchar **parv)
 {
     DUMMY
+}
+
+static void list_free_atoms(gpointer *data, GMemChunk *chunk)
+{
+    g_return_if_fail(data != NULL);
+    g_return_if_fail(chunk != NULL);
+
+    g_mem_chunk_free(chunk, data);
 }
 
 /*
@@ -171,10 +175,8 @@ gint m_notice(gint parc, gchar **parv)
  * parv[0] = sender prefix
  * parv[1] = comment
  */
-
-gint m_quit(gint parc, gchar **parv)
+gint m_quit(User *u, gint parc, gchar **parv)
 {
-    User *u = _TBL(user).get(parv[0]);
     Channel *c;
     GSList *johnny; /* the walker */
 
@@ -201,13 +203,16 @@ gint m_quit(gint parc, gchar **parv)
 
 		break;
 	    }
+
+	    if(c->members == NULL)
+	    {
+		_TBL(channel).del(c);
+		_TBL(channel).destroy(c);
+	    }
 	}
     }
 
-    for(johnny = u->channels; johnny; johnny = g_slist_next(johnny))
-    {
-	g_mem_chunk_free(_MPL(links), johnny->data);
-    }
+    g_slist_foreach(u->channels, (GFunc) list_free_atoms, _MPL(links));
 
     g_slist_free(u->channels);
     
@@ -222,23 +227,21 @@ gint m_quit(gint parc, gchar **parv)
  * parv[1] = channel
  * parv[2] = Optional part reason
  */
-gint m_part(gint parc, gchar **parv)
+gint m_part(User *u, gint parc, gchar **parv)
 {
     gchar *pfx = parv[0];
     gchar *chname = parv[1];
 
     Channel *c;
-    User *u;
     GSList *johnny; /* the walker */
     
+    g_return_val_if_fail(u != NULL, 0);
+
     g_return_val_if_fail(pfx != NULL, 0);
     g_return_val_if_fail(chname != NULL, 0);
 
     c = _TBL(channel).get(chname);
     g_return_val_if_fail(c != NULL, 0);
-
-    u = _TBL(user).get(pfx);
-    g_return_val_if_fail(u != NULL, 0);
     
     for(johnny = c->members; johnny; johnny = g_slist_next(johnny))
     {
@@ -252,14 +255,27 @@ gint m_part(gint parc, gchar **parv)
 	}
     }
 
+    if(c->members == NULL)
+    {
+	_TBL(channel).del(c);
+	_TBL(channel).destroy(c);
+    }
+
     return 1;
 }
 
-gint m_kill(gint parc, gchar **parv)
+/*
+ * m_kill 
+ * parv[0] = sender prefix 
+ * parv[1] = kill victim 
+ * parv[2] = kill path
+ */
+gint m_kill(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_motd(gint parc, gchar **parv)
+
+gint m_motd(User *u, gint parc, gchar **parv)
 {
     gint i;
     gchar *motd[] = 
@@ -290,7 +306,7 @@ gint m_motd(gint parc, gchar **parv)
  *       parv[2] = serverinfo/hopcount 
  *       parv[3] = serverinfo
  */
-gint m_server(gint parc, gchar **parv)
+gint m_server(User *u, gint parc, gchar **parv)
 {
     gint hopcount;
     
@@ -303,7 +319,7 @@ gint m_server(gint parc, gchar **parv)
     return 0;
 }
 
-gint m_info(gint parc, gchar **parv)
+gint m_info(User *u, gint parc, gchar **parv)
 {
     gint i;
     gchar *info[] = 
@@ -329,26 +345,26 @@ gint m_info(gint parc, gchar **parv)
     return 0;
 }
 
-gint m_stats(gint parc, gchar **parv)
+gint m_stats(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
 
-gint m_version(gint parc, gchar **parv)
+gint m_version(User *u, gint parc, gchar **parv)
 {
     send_out(rpl_str(RPL_VERSION),
 	    me.name, parv[0], SUX_VERSION);
     return 0;
 }
-gint m_squit(gint parc, gchar **parv)
+gint m_squit(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_pass(gint parc, gchar **parv)
+gint m_pass(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_umode(gint parc, gchar **parv)
+gint m_umode(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
@@ -361,7 +377,7 @@ gint m_umode(gint parc, gchar **parv)
  *       parv[3] = server is standalone or connected to non-TS only 
  *       parv[4] = server's idea of UTC time
  */
-gint m_svinfo(gint parc, gchar **parv)
+gint m_svinfo(User *u, gint parc, gchar **parv)
 {
     time_t deltat, tmptime, theirtime;
 
@@ -487,7 +503,7 @@ static void add_user_to_channel(User *u, Channel *c, guint flags)
  * parv[3] - modes + n arguments (key and/or limit) 
  * parv[4+n] - flags+nick list (all in one parameter)
  */
-gint m_sjoin(gint parc, gchar **parv)
+gint m_sjoin(User *u, gint parc, gchar **parv)
 {
     gint ts;
     gchar *channel;
@@ -569,51 +585,51 @@ gint m_sjoin(gint parc, gchar **parv)
     return 1;
 }
 
-gint m_capab(gint parc, gchar **parv)
+gint m_capab(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_burst(gint parc, gchar **parv)
+gint m_burst(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_away(gint parc, gchar **parv)
+gint m_away(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_nickcoll(gint parc, gchar **parv)
+gint m_nickcoll(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_cs(gint parc, gchar **parv)
+gint m_cs(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_ns(gint parc, gchar **parv)
+gint m_ns(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_ms(gint parc, gchar **parv)
+gint m_ms(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_os(gint parc, gchar **parv)
+gint m_os(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_rs(gint parc, gchar **parv)
+gint m_rs(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_time(gint parc, gchar **parv)
+gint m_time(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_admin(gint parc, gchar **parv)
+gint m_admin(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
-gint m_gnotice(gint parc, gchar **parv)
+gint m_gnotice(User *u, gint parc, gchar **parv)
 {
     DUMMY
 }
