@@ -6,6 +6,7 @@
 
 #define DUMMY return 0;
 
+
 gint m_private(gint parc, gchar **parv)
 {
     DUMMY
@@ -103,9 +104,8 @@ gint m_nick(gint parc, gchar **parv)
 
 gint m_error(gint parc, gchar **parv)
 {
-    extern void fatal(gchar *, ...);
     errno = 0;
-    fatal(parv[1]);
+    fatal("%s", parv[1]);
     return 0;
 }
 gint m_notice(gint parc, gchar **parv)
@@ -186,7 +186,7 @@ gint m_version(gint parc, gchar **parv)
 }
 gint m_squit(gint parc, gchar **parv)
 {
-    fprintf(stderr, "received SQUIT for %s [%s] (PORCODIO)\n",
+    fatal("received SQUIT for %s [%s]",
 	    parv[1], parv[2]);
     return 0;
 }
