@@ -26,26 +26,20 @@
 #define UMODE_R 0x0100
 #define UMODE_S 0x0200
 
-typedef struct user
+typedef struct user User;
+struct user
 {
     gchar nick[NICKLEN + 1];
     gchar username[USERLEN + 1];
     gchar host[HOSTLEN + 1];	
     gchar virthost[HOSTLEN + 1];
     gchar gcos[INFOLEN + 1];
-    gchar server[NICKLEN + 1];
+    User *server;
     time_t ts;
     gshort mode;
     GSList *channels;
-    gshort invalid_pw_count;
-    time_t invalid_pw_time;
-    time_t lastmemosend;
-    time_t lastnickreg;
-    time_t flood_time;
-    gshort floodlev;
-    gshort motd, version;
-    
-} User;
+    gshort flags;
+};
 
 #define	CHFL_CHANOP     0x0001	/* Channel operator */
 #define	CHFL_VOICE      0x0002	/* the power to speak */
@@ -72,20 +66,23 @@ typedef struct user
 #define MODE_LISTED	0x20000
 #define MODE_NONICKCHG	0x40000
 
-typedef struct
+typedef struct mode Mode;
+struct mode
 {
    gulong limit;
    gushort mode;
    gchar key[KEYLEN + 1];
-} Mode;
+};
 
-typedef struct chanmember
+typedef struct chanmember ChanMember;
+struct chanmember
 {
     User *u;
     int flags;
-} ChanMember;
+};
 
-typedef struct channel
+typedef struct channel Channel;
+struct channel
 {
    gchar chname[CHANNELLEN + 1];
    gchar topic[TOPICLEN + 1];
@@ -95,9 +92,10 @@ typedef struct channel
    Mode mode;
    GSList *bans;
    GSList *members;
-} Channel;
+};
 
-typedef struct slink
+typedef struct slink SLink;
+struct slink
 {
     union
     {
@@ -106,7 +104,7 @@ typedef struct slink
 	gchar *cp;
     } value;
     gint flags;
-} SLink;
+};
 
 #define CAPAB_NOQUIT  0x0002 /* Supports NOQUIT */
 #define CAPAB_BURST   0x0008 /* server supports BURST command */
@@ -120,6 +118,21 @@ typedef struct slink
 
 #define NEEDED_CAPABS	(CAPAB_NOQUIT | CAPAB_BURST | CAPAB_UNCONN | CAPAB_NICKIP)
 
+#define seconds * 1000
+#define minutes * 60 seconds
+#define second seconds
+#define minute minutes
+
+#define PING_FREQUENCY 10 minutes
+#define PING_TIMEOUT 30 seconds
+
+#define FLAGS_USERBURST	   0x01   /* server in nick/channel netburst */
+#define FLAGS_TOPICBURST   0x02   /* server in topic netburst */
+#define FLAGS_SOBSENT      0x04   /* we've sent an SOB, just have to 
+			           * send an EOB */
+#define FLAGS_EOBRECV      0x08   /* we're waiting on an EOB */
+#define FLAGS_BURST	   (FLAGS_USERBURST | FLAGS_TOPICBURST)
+
 #define SUX_MODULE	"Sux Core Services"
 #define SUX_RELEASE	"0.02"
 #define SUX_VERSION	SUX_MODULE " " SUX_RELEASE
@@ -130,5 +143,8 @@ typedef struct slink
 #define SUX_UPLINK_HOST	"twisted.vejnet.org"
 #define SUX_UPLINK_PORT	6667
 #define SUX_UPLINK_NAME "server.dal.net"
+
+#define SUX_CUR_TS	5
+#define SUX_MIN_TS	3
 
 #endif /* __sux_h__ */
