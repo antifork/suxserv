@@ -140,10 +140,6 @@ gint m_pong(User *u, gint parc, gchar **parv)
 
     return 0;
 }
-gint m_kick(User *u, gint parc, gchar **parv)
-{
-    DUMMY
-}
 
 /*
  * m_nick
@@ -312,6 +308,32 @@ gint m_part(User *u, gint parc, gchar **parv)
 
     return 1;
 }
+
+/*
+ * m_kick
+ * parv[0] = sender prefix
+ * parv[1] = channel
+ * parv[2] = client to kick
+ * parv[3] = kick comment
+ */
+gint m_kick(User *u, gint parc, gchar **parv)
+{
+    Channel *c;
+    User *victim;
+    
+    g_return_val_if_fail(u != NULL, -1);
+
+    c = _TBL(channel).get(parv[1]);
+    g_return_val_if_fail(c != NULL, -1);
+
+    victim = _TBL(user).get(parv[2]);
+    g_return_val_if_fail(victim != NULL, -1);
+    
+    g_return_val_if_fail(remove_user_from_channel(c, u) == TRUE, -1);
+    
+    return 0;
+}
+
 
 gint m_motd(User *u, gint parc, gchar **parv)
 {
