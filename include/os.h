@@ -40,14 +40,15 @@
 #ifndef __os_h__
 #define __os_h__
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <netinet/in.h>
 #include <netdb.h>
 #include <fcntl.h>
 #include <time.h>
@@ -57,5 +58,6 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <sys/poll.h>
+#include <pthread.h>
 
 #endif /* __os_h__ */
