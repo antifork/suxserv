@@ -1,3 +1,4 @@
 *.da
 sux
 parse.c
+gmon.out
