@@ -13,7 +13,7 @@
  * #define HASH(sta, end, hash)  while(end != sta) { hash = ((hash * 16777619UL) ^ (*end--)) }
  */
 #define HASHSIZE	1021
-#define MEM_CHUNK	256
+#define MEM_CHUNK	512
 #define FNV_prime	16777619UL
 typedef unsigned long hash_t;
 static __inline hash_t hash(char *s)
