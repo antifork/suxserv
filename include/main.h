@@ -76,7 +76,6 @@ typedef struct mydata
     GCond *readbuf_cond;
     GMutex *readbuf_mutex;
     GMutex *writebuf_mutex;
-    GMutex *me_mutex;
 
     GAsyncQueue *sig_queue;
 
