@@ -17,7 +17,7 @@
  * 
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement:
- *    This product includes software developed by Chip Norkus.
+ *    This product includes software developed by Barnaba Marcello.
  * 
  * 4. The names of the maintainer, developers and contributors may not be
  *    used to endorse or promote products derived from this software
@@ -69,7 +69,6 @@ extern gint  m_capab(User *, gint, gchar **);
 extern gint  m_burst(User *, gint, gchar **);
 extern gint  m_away(User *, gint, gchar **);
 extern gint  m_admin(User *, gint, gchar **);
-extern gint  m_gnotice(User *, gint, gchar **);
 extern gint  m_nickcoll(User *, gint, gchar **);
 extern gint  m_lusers(User *, gint, gchar **);
 extern gint  m_whois(User *, gint, gchar **);

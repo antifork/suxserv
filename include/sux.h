@@ -17,7 +17,7 @@
  * 
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement:
- *    This product includes software developed by Chip Norkus.
+ *    This product includes software developed by Barnaba Marcello.
  * 
  * 4. The names of the maintainer, developers and contributors may not be
  *    used to endorse or promote products derived from this software
@@ -69,11 +69,10 @@
 typedef struct user User;
 struct user
 {
-    gchar nick[NICKLEN + 1];
+    gchar name[NICKLEN + 1];
     gchar username[USERLEN + 1];
     gchar host[HOSTLEN + 1];	
-    gchar virthost[HOSTLEN + 1];
-    gchar gcos[INFOLEN + 1];
+    gchar info[INFOLEN + 1];
     User *server;
     time_t ts;
     gshort mode;
