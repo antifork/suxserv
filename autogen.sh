@@ -15,13 +15,13 @@ aclocal
 echo running autoheader ...
 autoheader 
 
+echo running libtoolize ...
+libtoolize --automake -c
+
 echo running automake ...
 automake -a --copy 
 
 echo running autoconf ...
 autoconf
-
-echo running libtoolize ...
-libtoolize --automake -c
 
 echo all done !
