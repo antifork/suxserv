@@ -40,7 +40,7 @@ gint main(gint argc, gchar **argv)
     {
 	GThread *net_thr, *parse_thr, *sig_thr;
 	GError *err = NULL;
-	pid_t pid = 0 ;//fork();
+	pid_t pid = fork();
 	gint *received_signal = NULL;
 
 	switch(pid)
