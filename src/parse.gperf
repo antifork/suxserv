@@ -74,8 +74,7 @@ gint parse(gchar *in)
 
     strncpy(buffer, in, BUFSIZE);
 
-    g_fprintf(stderr, "<: %s\n", buffer);
-    
+    /* g_fprintf(stderr, "<: %s\n", buffer); */    
     para[0] = G_LIKELY(u) ? u->nick : NULL;
     if (*ch == ':') 
     {
