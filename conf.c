@@ -1,21 +1,21 @@
 
 /* field breakup for ircd.conf file. */
-char *getfield(char *newline)
+gchar *getfield(gchar *newline)
 {
-    static char *line = (char *) NULL;
-    char       *end, *field;
+    static gchar *line = (gchar *) NULL;
+    gchar       *end, *field;
 
     if (newline)
 	line = newline;
     
-    if (line == (char *) NULL)
-	return ((char *) NULL);
+    if (line == (gchar *) NULL)
+	return ((gchar *) NULL);
     
     field = line;
     if ((end = strchr(line, IRCDCONF_DELIMITER)) == NULL)
     {
-	line = (char *) NULL;
-	if ((end = strchr(field, '\n')) == (char *) NULL)
+	line = (gchar *) NULL;
+	if ((end = strchr(field, '\n')) == (gchar *) NULL)
 	    end = field + strlen(field);
     }
     else

@@ -3,6 +3,8 @@
 
 #define MAXPARA 15
 
-int parse(char *, char *);
+#include "sux.h"
+
+int parse(gchar *);
 
 #endif
