@@ -14,5 +14,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <signal.h>
+#include <syslog.h>
+#include <stdarg.h>
 
 #endif /* __os_h__ */
