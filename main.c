@@ -1,7 +1,7 @@
 /* insert a (C) notice here */
 
 #define MAIN
-#include "services.h"
+#include "sux.h"
 #include "dbuf.h"
 #include "main.h"
 #include "parse.h"
@@ -30,8 +30,8 @@ int connect_server(char *host, unsigned int port)
 {
     struct sockaddr_in sock, my_addr;
     int ret, nb;
-    socklen_t namelen;
-    char hostbuf[HOSTLEN];
+    socklen_t namelen = sizeof(my_addr);
+    char hostbuf[HOSTLEN + 1];
 
     if(!inet_pton(AF_INET, host, (void*)&sock.sin_addr))
     {
@@ -119,7 +119,7 @@ static __inline void io_error(char *func, int e)
 int send_out(char *fmt, ...)
 {
     va_list ap;
-    static char buffer[BUFSIZE + 1];
+    char buffer[BUFSIZE + 1];
     size_t len;
     
     va_start(ap, fmt);
@@ -155,6 +155,10 @@ static void io_loop()
     send_out("CAPAB TS3 NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
     send_out("SVINFO 3 1 0 :%lu", time(NULL));
     send_out("SERVER %s 1 :%s", me.name, me.info);
+    
+    memset(readbuf, 0x0, IOBUFSIZE + 1);
+    memset(writebuf, 0x0, IOBUFSIZE + 1);
+
     for(;;)
     {
 	FD_ZERO(&read_set);
