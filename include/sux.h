@@ -3,7 +3,7 @@
 
 #include <glib.h>
 #include "os.h"
-#include "memory.h"
+#include "table.h"
 
 #define NICKLEN		30
 #define USERLEN		10
