@@ -118,10 +118,12 @@ static void signal_handler(gint sig)
     g_critical_syslog("Received signal %d (%s), quitting", sig, g_strsignal(sig));
 }
 
+/*
 static void dummy_signal(gint sig)
 {
     signal(sig, dummy_signal);
 }
+*/
 
 static void setup_signals(void)
 {
@@ -129,7 +131,7 @@ static void setup_signals(void)
     signal(SIGHUP, signal_handler);
     signal(SIGQUIT, signal_handler);
     signal(SIGTERM, signal_handler);
-    signal(SIGPIPE, dummy_signal);
+    signal(SIGPIPE, SIG_IGN);
 }
 
 static void setup_allocators(void)
