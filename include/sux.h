@@ -176,7 +176,7 @@ struct slink
 #define FLAGS_AWAY         0x10
 
 #define SUX_MODULE	"Sux Core Services"
-#define SUX_RELEASE	"0.02"
+#define SUX_RELEASE	"0.1"
 #define SUX_VERSION	SUX_MODULE " " SUX_RELEASE
 
 #define SUX_SERV_NAME	"services.azzurra.org"
