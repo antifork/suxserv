@@ -44,6 +44,7 @@ gint main(gint argc, gchar **argv)
 		
 		setup_signals();
 		setup_allocators();
+		setup_netbuf();
 
 		fflush(stdout);
 		fflush(stderr);
@@ -117,12 +118,18 @@ static void signal_handler(gint sig)
     g_critical_syslog("Received signal %d (%s), quitting", sig, g_strsignal(sig));
 }
 
+static void dummy_signal(gint sig)
+{
+    signal(sig, dummy_signal);
+}
+
 static void setup_signals(void)
 {
     signal(SIGINT, signal_handler);
     signal(SIGHUP, signal_handler);
     signal(SIGQUIT, signal_handler);
     signal(SIGTERM, signal_handler);
+    signal(SIGPIPE, dummy_signal);
 }
 
 static void setup_allocators(void)
