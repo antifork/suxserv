@@ -67,7 +67,7 @@ GIOChannel *connect_server(gchar *host, guint port)
 
     inet_ntop(AF_INET, (const void *) &sock.sin_addr, me.hostip, HOSTLEN - 1);
 
-    g_message("Connecting to %s[%s] ... ", me.host, me.hostip);
+    g_message_syslog("Connecting to %s[%s] ... ", host, me.hostip);
 
     if((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	g_errno_critical("socket()");
@@ -90,7 +90,7 @@ GIOChannel *connect_server(gchar *host, guint port)
     else if(fcntl(fd, F_SETFL, nb | O_NONBLOCK) < 0)
 	g_errno_critical("fcntl(F_SETFL, nb | O_NONBLOCK)");
 
-    g_message("Connection established");
+    g_message_syslog("Connection established");
 
     if((ret = g_io_channel_unix_new(fd)))
     {
@@ -100,7 +100,7 @@ GIOChannel *connect_server(gchar *host, guint port)
 
 	if(err)
 	{
-	    g_critical(err->message);
+	    g_critical_syslog(err->message);
 	    g_error_free(err);
 
 	    g_io_channel_shutdown(ret, FALSE, NULL);
@@ -113,7 +113,7 @@ GIOChannel *connect_server(gchar *host, guint port)
 
 	if(err)
 	{
-	    g_critical(err->message);
+	    g_critical_syslog(err->message);
 	    g_error_free(err);
 
 	    g_io_channel_shutdown(ret, FALSE, NULL);
@@ -302,7 +302,7 @@ void send_out(gchar *fmt, ...)
 	len++;
     }
 
-    g_fprintf(stderr, ">: %s", send_out_buf);
+    /* g_fprintf(stderr, ">: %s", send_out_buf); */
 
     g_mutex_lock(me.writebuf_mutex);
     me.sendQ = g_string_append(me.sendQ, send_out_buf);
