@@ -293,6 +293,6 @@
 
 #define ERR_NUMERIC_ERR      999
 
-char *rpl_str(int);
+G_INLINE_FUNC gchar *rpl_str(int);
 
 #endif /* __numeric_h__ */
