@@ -138,7 +138,9 @@ int send_out(char *fmt, ...)
 	buffer[len+1] = '\0';
 	len++;
     }
-    dbuf_put(&me.sendQ, buffer, len);
+    if(!dbuf_put(&me.sendQ, buffer, len))
+	fatal("dbuf_put()");
+
     return len;
 }
 
@@ -180,7 +182,7 @@ static void io_loop()
 		while((count = read(me.sock, readbuf, IOBUFSIZE)) > 0)
 		{
 		    readbuf[count] = '\0';
-		    if(dbuf_put(&me.recvQ, readbuf, count) == 0)
+		    if(!dbuf_put(&me.recvQ, readbuf, count))
 			fatal("dbuf_put()");
 		}
 		if(count < 0)
@@ -192,13 +194,24 @@ static void io_loop()
 	    {
 		while(DBufLength(&me.sendQ))
 		{
-		    if((count = dbuf_get(&me.sendQ, writebuf, IOBUFSIZE)) == 0)
+		    char *p = dbuf_map(&me.sendQ, &count);
+		    if(count <= 0)
+		    {
 			break;
-		    writebuf[count] = '\0';
-		    if(write(me.sock, writebuf, count) < 0)
+		    }
+		    if(write(me.sock, p, count) < 0)
 		    {
 			io_error("write()", errno);
 		    }
+		    dbuf_delete(&me.sendQ, count);
+		    
+/*		    if((count = dbuf_get(&me.sendQ, writebuf, IOBUFSIZE)) <= 0)
+			break;*/
+//		    writebuf[count] = '\0';
+//		    if(write(me.sock, writebuf, count) < 0)
+//		    {
+//			io_error("write()", errno);
+//		    }
 		} 
 	    }
 
