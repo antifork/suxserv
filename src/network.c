@@ -200,13 +200,13 @@ static gchar *net_r_buf;
 static gchar *send_out_buf;
 void setup_netbuf(void)
 {
-    me.sendQ = g_string_sized_new(IOBUFSIZE);
-    me.recvQ = g_string_sized_new(IOBUFSIZE);
+    me.sendQ = g_string_sized_new(WRITEBUFSZ);
+    me.recvQ = g_string_sized_new(READBUFSZ);
 
-    net_w_buf = g_string_sized_new(IOBUFSIZE);
-    net_r_buf = g_malloc0(IOBUFSIZE);
+    net_w_buf = g_string_sized_new(WRITEBUFSZ);
+    net_r_buf = g_malloc0(READBUFSZ);
 
-    send_out_buf = g_malloc0(BUFSIZE);
+    send_out_buf = g_malloc0(WRITEBUFSZ);
 }
 
 gboolean net_receive_callback(GIOChannel *handle)
@@ -218,7 +218,7 @@ gboolean net_receive_callback(GIOChannel *handle)
 
     while(TRUE)
     {
-	switch(g_io_channel_read_chars(handle, net_r_buf, IOBUFSIZE, &bytes_read, &err))
+	switch(g_io_channel_read_chars(handle, net_r_buf, READBUFSZ, &bytes_read, &err))
 	{
 	    case G_IO_STATUS_NORMAL:
 		g_mutex_lock(me.readbuf_mutex);

@@ -40,7 +40,8 @@
 #ifndef __network_h__
 #define __network_h__
 
-#define IOBUFSIZE 32768
+#define READBUFSZ	32768
+#define WRITEBUFSZ	65535
 
 GIOChannel *connect_server(gchar *, guint);
 
