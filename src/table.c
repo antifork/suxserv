@@ -17,7 +17,7 @@
  * 
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement:
- *    This product includes software developed by Chip Norkus.
+ *    This product includes software developed by Barnaba Marcello.
  * 
  * 4. The names of the maintainer, developers and contributors may not be
  *    used to endorse or promote products derived from this software
@@ -142,7 +142,7 @@ G_INLINE_FUNC void hash_tbl_dealloc(gchar *key, gpointer *data, GMemChunk *mem_p
 #define CMEMBERS_PREALLOC	CHANNEL_PREALLOC
 #define SLINK_PREALLOC		(USER_PREALLOC * 4)
 
-TABLE_DECLARE(user, User, hash_nick_name, nick, gchar);
+TABLE_DECLARE(user, User, hash_nick_name, name, gchar);
 TABLE_DECLARE(channel, Channel, hash_channel_name, chname, gchar);
 
 MEMPOOL_DECLARE(cmembers);
