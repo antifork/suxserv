@@ -17,7 +17,7 @@
  * 
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement:
- *    This product includes software developed by Chip Norkus.
+ *    This product includes software developed by Barnaba Marcello.
  * 
  * 4. The names of the maintainer, developers and contributors may not be
  *    used to endorse or promote products derived from this software
@@ -43,6 +43,7 @@
 #include "network.h"
 #include "main.h"
 #include "log.h"
+#include "threads.h"
 
 void __sux_gen_log_handler_error(const gchar *log_domain, GLogLevelFlags log_level,
 	const gchar *message)
@@ -70,7 +71,7 @@ void __sux_irc_log_handler_critical_errno(const gchar *log_domain, GLogLevelFlag
 	    me.name, log_domain, message, errstr);
     send_out("SQUIT %s :%s (%s)", me.name, message, errstr);
 
-    g_async_queue_push(me.sig_queue, zero);
+    push_signal(zero);
 }
 
 void __sux_irc_log_handler_critical_syslog(const gchar *log_domain, GLogLevelFlags log_level,
@@ -79,7 +80,7 @@ void __sux_irc_log_handler_critical_syslog(const gchar *log_domain, GLogLevelFla
     syslog(LOG_NOTICE, "%s: Critical: %s", log_domain, message);
     gint *zero = g_new0(gint, 1);
 
-    g_async_queue_push(me.sig_queue, zero);
+    push_signal(zero);
 }
 
 void __sux_irc_log_handler_generic(const gchar *log_domain, GLogLevelFlags log_level,
@@ -106,7 +107,7 @@ void __sux_irc_log_handler_generic(const gchar *log_domain, GLogLevelFlags log_l
     {
 	gint *zero = g_new0(gint, 1);
 	send_out("SQUIT %s :%s", me.name, message);
-	g_async_queue_push(me.sig_queue, zero);
+	push_signal(zero);
     }
 }
 
