@@ -140,8 +140,8 @@ G_INLINE_FUNC void hash_tbl_dealloc(gchar *key, gpointer *data, GMemChunk *mem_p
     g_mem_chunk_free(mem_pool, data);
 }
 
-#define USER_PREALLOC		1024
-#define CHANNEL_PREALLOC	1024
+#define USER_PREALLOC		4096
+#define CHANNEL_PREALLOC	4096
 #define CMEMBERS_PREALLOC	CHANNEL_PREALLOC
 #define SLINK_PREALLOC		(USER_PREALLOC * 4)
 
