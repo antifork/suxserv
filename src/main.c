@@ -10,6 +10,9 @@
 extern gint errno;
 
 static void exit_func(gint);
+static void stderr_fatal(char *, ...);
+static void syslog_fatal(char *, ...);
+static void syslog_init(void);
 
 gint main(gint argc, gchar **argv)
 {
@@ -19,29 +22,63 @@ gint main(gint argc, gchar **argv)
     strcpy(me.info, "SuxServices 0.001");
     strcpy(me.pass, "codio");
     strcpy(me.host, "homes.vejnet.org");
+
     me.port = htons(6667);
+
     signal(SIGINT, exit_func);
+    signal(SIGHUP, exit_func);
+    signal(SIGQUIT, exit_func);
+    signal(SIGTERM, exit_func);
+
+    fatal = stderr_fatal;
     
     if((me.handle = connect_server(me.host, me.port)))
     {
-	tables_init();
-	main_loop = g_main_loop_new(NULL, TRUE);
+	pid_t pid = fork();
 
-	g_io_add_watch(me.handle,
-		G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc) net_receive_callback, NULL);
-	g_io_add_watch(me.handle,
-		G_IO_ERR | G_IO_HUP | G_IO_NVAL, (GIOFunc) net_err_callback, NULL);
-	me.send_tag = g_io_add_watch(me.handle,
-		    G_IO_OUT | G_IO_ERR, (GIOFunc) net_send_callback, NULL);
+	switch(pid)
+	{
+	    case 0:
+		/* child */
+		syslog_init();
+		tables_init();
+		
+		fatal = syslog_fatal;
+		
+		main_loop = g_main_loop_new(NULL, TRUE);
 
-	send_out("PASS %s :TS", me.pass);
-	send_out("CAPAB NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
-	send_out("SVINFO 5 3 0 :%lu", time(NULL));
-	send_out("SERVER %s 1 :%s", me.name, me.info);
+		g_io_add_watch(me.handle,
+			G_IO_IN | G_IO_ERR | G_IO_HUP, (GIOFunc) net_receive_callback, NULL);
+
+		g_io_add_watch(me.handle,
+			G_IO_ERR | G_IO_HUP | G_IO_NVAL, (GIOFunc) net_err_callback, NULL);
+
+		me.send_tag = g_io_add_watch(me.handle,
+			G_IO_OUT | G_IO_ERR, (GIOFunc) net_send_callback, NULL);
+
+		send_out("PASS %s :TS", me.pass);
+		send_out("CAPAB NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
+		send_out("SVINFO 5 3 0 :%lu", time(NULL));
+		send_out("SERVER %s 1 :%s", me.name, me.info);
 	
-	g_main_loop_run(main_loop);
+		g_main_loop_run(main_loop);
 	
-	return 0;
+		return 0;
+
+	    case -1:
+		/* error */
+		fatal("fork()");
+
+		return -1;
+
+	    default:
+		/* father */
+		fprintf(stderr, "services are daemonizing [pid \1%d\1]\n", pid);
+		
+		exit(EXIT_SUCCESS);
+
+		return 0;
+	}
     }
 
     fatal("cannot connect to server %s:%d", me.host, me.port);
@@ -49,7 +86,7 @@ gint main(gint argc, gchar **argv)
     return 0;
 }
 
-void fatal(gchar *fmt, ...)
+static void stderr_fatal(gchar *fmt, ...)
 {
     va_list ap;
     gint save_errno = errno;
@@ -62,10 +99,35 @@ void fatal(gchar *fmt, ...)
     exit(EXIT_FAILURE);
 }
 
+static void syslog_fatal(gchar *fmt, ...)
+{
+    va_list ap;
+    gint save_errno = errno;
+    gchar msgbuf[BUFSIZ];
+
+    va_start(ap, fmt);
+    vsnprintf(msgbuf, sizeof(msgbuf), fmt, ap);
+    va_end(ap);
+    
+    syslog(LOG_ERR, "%s: %s", msgbuf, save_errno ? strerror(save_errno) : "Terminated.");
+
+    syslog(LOG_NOTICE, "syslog session closed");
+    closelog();
+
+    exit(EXIT_FAILURE);
+}
+
+#ifdef G_CAN_INLINE
+G_INLINE_FUNC
+#endif
+static void syslog_init(void)
+{
+    openlog("sux", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_DAEMON);
+    syslog(LOG_NOTICE, "syslog session opened");
+}
 
 static void exit_func(gint sig)
 {
-    fprintf(stderr, "received signal %d, quitting ..\n",
-	    sig);
-    exit(0);
+    errno = 0;
+    fatal("received signal %d, quitting", sig);
 }
