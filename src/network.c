@@ -25,8 +25,10 @@ GIOChannel *connect_server(gchar *host, guint port)
     sock.sin_port = port;
     sock.sin_family = AF_INET;
 
-    printf("connecting to %s ...", inet_ntop(AF_INET,
+    fprintf(stdout, "connecting to %s ... ", inet_ntop(AF_INET,
 		(const void *) &sock.sin_addr, hostbuf, HOSTLEN-1));
+
+    fflush(stdout);
 
     if((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	fatal("socket()");
@@ -151,6 +153,9 @@ gchar *net_receive(GIOChannel *handle, gsize *arnold) /* the terminator */
     
 	case G_IO_STATUS_EOF:
 	    fatal("connection closed");
+	    return NULL;
+
+	case G_IO_STATUS_AGAIN:
 	    return NULL;
 
 	default:
