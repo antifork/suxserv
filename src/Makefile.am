@@ -5,6 +5,8 @@ bin_PROGRAMS = sux
 
 CLEANFILES = parse.c
 
+MAINTAINERCLEANFILES = Makefile.in
+
 INCLUDES = \
 	-I$(top_srcdir)/include \
 	$(GLIB_CFLAGS) \
