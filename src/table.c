@@ -25,11 +25,15 @@ G_INLINE_FUNC guint FNV_hash(guchar *s)
     return h;
 }
 
-TABLE_DECLARE(user, User, FNV_hash, nick, gchar)
-TABLE_DECLARE(channel, Channel, FNV_hash, chname, gchar)
+TABLE_DECLARE(user, User, FNV_hash, nick, gchar);
+TABLE_DECLARE(channel, Channel, FNV_hash, chname, gchar);
+
+MEMPOOL_DECLARE(cmembers);
     
 void tables_init(void)
 {
     TABLE_SETUP_FUNC(user);
     TABLE_SETUP_FUNC(channel);
+
+    MEMPOOL_SETUP_FUNC(cmembers, ChanMember);
 }
