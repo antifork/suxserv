@@ -10,13 +10,6 @@
 
 #define DUMMY return 0;
 
-#define seconds * 1000
-#define minutes * 60 seconds
-#define second seconds
-#define minute minutes
-
-#define PING_FREQUENCY 10 minutes
-#define PING_TIMEOUT 30 seconds
 
 REMOTE_TABLE_INSTANCE(user);
 REMOTE_TABLE_INSTANCE(channel);
@@ -32,20 +25,15 @@ static struct
     User *ptr;
 
     guint ping_tag;
+    time_t firsttime;
+    gshort flags;
+    
 } uplink;
 
 static gboolean ping_timeout(User *u)
 {
     /* ping timeout */
-    send_out("ERROR :Closing Link: Ping Timeout");
-
-    if(G_LIKELY(u))
-    {
-	send_out(":%s SQUIT %s :Ping Timeout (%d usecs)",
-		me.name, u->nick, PING_FREQUENCY);
-    }
-    
-    STOP_RUNNING();
+    g_critical("Ping Timeout (%d usecs)", PING_FREQUENCY);
     
     return FALSE;
 }
@@ -59,7 +47,7 @@ static gboolean send_ping(User *u)
 
     uplink.ping_tag = g_timeout_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, u);
 
-    send_out(":%s PING :%s", me.name, u->nick);
+    send_out("PING :%s", u->nick);
 
     return TRUE;
 }
@@ -67,7 +55,7 @@ static gboolean send_ping(User *u)
 void nego_start(void)
 {
     send_out("PASS %s :TS", me.pass);
-    send_out("CAPAB NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
+    send_out("CAPAB BURST NOQUIT SSJOIN UNCONNECT NICKIP TSMODE");
     send_out("SVINFO 5 3 0 :%lu", time(NULL));
     send_out("SERVER %s 1 :%s", me.name, me.info);
 
@@ -126,17 +114,66 @@ gint m_mode(User *u, gint parc, gchar **parv)
 
 gint m_ping(User *u, gint parc, gchar **parv)
 {
+    if(uplink.flags & (FLAGS_SOBSENT|~FLAGS_BURST))
+    {
+	uplink.flags &= ~FLAGS_SOBSENT;
+	send_out("BURST %d",
+		g_io_channel_get_buffer_condition(me.handle) & G_IO_OUT ?
+		me.handle->write_buf->len : 0);
+    }
+
     send_out(":%s PONG :%s", me.name, parv[1]);
     return 1;
 }
 
+/*
+ * PASS pwd :TS
+ * CAPAB x y z
+ * SERVER sname hops info
+ * SVINFO ts ts_min 0 :time
+ * :sname GNOTICE :Link established
+ * BURST
+ * NICK ..
+ * NICK ..
+ * PING
+ * TOPIC
+ * AWAY
+ * PING
+ * BURST sendq
+ * PING
+ */
 gint m_pong(User *u, gint parc, gchar **parv)
 {
+    g_return_val_if_fail(u != NULL, -1);
+
     if(uplink.ping_tag != -1)
     {
 	g_return_val_if_fail(g_source_remove(uplink.ping_tag) == TRUE, -1);
 	uplink.ping_tag = -1;
 	return 0;
+    }
+
+    if(u != uplink.ptr)
+    {
+	return 0;
+    }
+
+    if(uplink.flags & FLAGS_USERBURST)
+    {
+	uplink.flags &= ~FLAGS_USERBURST;
+	send_out(":%s GNOTICE :%s has processed user/channel burst, "
+		"sending topic burst.", me.name, u->nick);
+
+	uplink.flags |= FLAGS_SOBSENT;
+	/* XXX: send topic burst */
+	send_out("PING :%s", me.name);
+    }
+    else if(uplink.flags & FLAGS_TOPICBURST)
+    {
+	uplink.flags &= ~FLAGS_TOPICBURST;
+	send_out(":%s GNOTICE :%s has processed topic burst (synched "
+		"to network data).", me.name, u->nick);
+	send_out("PING :%s", me.name);
     }
 
     return 0;
@@ -180,7 +217,10 @@ gint m_nick(User *u, gint parc, gchar **parv)
 	/* XXX: umode handling */
 	strcpy(u->username, parv[5]);
 	strcpy(u->host, parv[6]);
-	strcpy(u->server, parv[7]);
+	
+	u->server = _TBL(user).get(parv[7]);
+	g_return_val_if_fail(u->server != NULL, -1);
+	
 	/* XXX: nickip handling */
 	strcpy(u->gcos, parv[10]);
     }
@@ -412,42 +452,41 @@ gint m_server(User *u, gint parc, gchar **parv)
 	/* my uplink */
 	if(uplink.ptr != _TBL(user).get(name))
 	{
-	    send_out("ERROR :No C/N Lines");
-	    send_out(":%s SQUIT %s :No C/N Lines",
-		    me.name, name);
+	    g_critical("No C/N Lines");
 
-	    STOP_RUNNING();
+	    return 0;
 	}
 
 	if(mycmp(uplink.passwd, me.pass))
 	{
-	    send_out("ERROR :Access Denied (password mismatch)");
-	    send_out(":%s SQUIT %s :Access Denied (password mismatch)",
-		    me.name, name);
+	    g_critical("Access Denied (password mismatch)");
 
-	    STOP_RUNNING();
+	    return 0;
 	}
 
 	if(!(uplink.capabs & NEEDED_CAPABS))
 	{
-	    send_out("ERROR :Server does not support all the capabs I need");
-	    send_out(":%s SQUIT %s :Server does not support all the capabs I need",
-		    me.name, name);
+	    g_critical("ERROR :Server does not support all the capabs I need");
 
-	    STOP_RUNNING();
+	    return 0;
 	}
 
 	u = me.uplink = uplink.ptr;
 
-	u->mode = atoi(parv[2]);
 	strcpy(u->gcos, parv[3]);
 	
 	g_source_remove(uplink.ping_tag);
 	uplink.ping_tag = -1;
 	g_timeout_add(PING_FREQUENCY, (GSourceFunc) send_ping, u);
 
-	g_message("Linked with %s [%s], distant %d hop%s",
-		u->nick, u->gcos, u->mode, u->mode != 1 ? "s" : "");
+	uplink.firsttime = time(NULL);
+	send_out(":%s GNOTICE :Link with %s[%s] established, states: TS",
+		me.name, u->nick, SUX_UPLINK_HOST);
+	
+	send_out("BURST");
+	/* XXX: send our agents here */
+	uplink.flags |= FLAGS_SOBSENT|FLAGS_BURST;
+	send_out("PING %s", me.name);
     }
     else
     {
@@ -532,9 +571,26 @@ gint m_version(User *u, gint parc, gchar **parv)
 	    me.name, parv[0], SUX_VERSION);
     return 0;
 }
+
+/*
+ * m_squit
+ * parv[0] = sender prefix 
+ * parv[1] = server name 
+ * parv[2] = comment
+ */
 gint m_squit(User *u, gint parc, gchar **parv)
 {
-    DUMMY
+    User *srv;
+
+    g_return_val_if_fail(u != NULL, -1);
+    
+    srv = _TBL(user).get(parv[1]);
+    g_return_val_if_fail(srv != NULL, -1);
+
+    _TBL(user).del(srv);
+    _TBL(user).destroy(srv);
+
+    return 0;
 }
 
 /*
@@ -563,20 +619,19 @@ gint m_pass(User *u, gint parc, gchar **parv)
 gint m_svinfo(User *u, gint parc, gchar **parv)
 {
     time_t deltat, tmptime, theirtime;
+    guint their_ts_ver, their_ts_min_ver;
 
     g_return_val_if_fail(parc > 4, -1);
 
     tmptime = time(NULL);
     theirtime = atol(parv[4]);
-    deltat = abs(theirtime - tmptime);
+    deltat = ABS(theirtime - tmptime);
 
     if(deltat > 45)
     {
-	g_warning("Link %s dropped, excessive TS delta (%ld)", u->nick, deltat);
-	send_out("ERROR :Closing Link: excessive TS delta (%ld)", deltat);
-	send_out(":%s SQUIT %s :Closing Link: excessive TS delta (%ld)",
-		me.name, u->nick, deltat);
-	STOP_RUNNING();
+	g_critical("Link %s dropped, excessive TS delta (%ld)", u->nick, deltat);
+
+	return 0;
     }
     else if(deltat > 15)
     {
@@ -584,8 +639,14 @@ gint m_svinfo(User *u, gint parc, gchar **parv)
 		u->nick, tmptime, theirtime, deltat);
     }
 
-    g_message("Link %s TS protocol version %s (min %s)",
-	    u->nick, parv[1], parv[2]);
+    their_ts_ver = atoi(parv[1]);
+    their_ts_min_ver = atoi(parv[2]);
+    if(their_ts_ver < SUX_MIN_TS || SUX_CUR_TS < their_ts_min_ver)
+    {
+	g_critical_syslog("Incompatible TS version (%d,%d)",
+		their_ts_ver, their_ts_min_ver);
+	return 0;
+    }
 
     me.uplink->ts = theirtime;
 
@@ -825,7 +886,7 @@ gint m_lusers(User *u, gint parc, gchar **parv)
  */
 gint m_whois(User *u, gint parc, gchar **parv)
 {
-    User *target, *target_srv;
+    User *target;
     gchar *nick = parv[2];
     gchar chanbuf[BUFSIZE];
     gint len, mlen;
@@ -843,9 +904,6 @@ gint m_whois(User *u, gint parc, gchar **parv)
 
 	return 0;
     }
-
-    target_srv = _TBL(user).get(target->server);
-    g_return_val_if_fail(target_srv != NULL, -1);
 
     send_out(rpl_str(RPL_WHOISUSER), me.name,
 	    parv[0], target->nick, target->username,
@@ -877,7 +935,7 @@ gint m_whois(User *u, gint parc, gchar **parv)
     }
 
     send_out(rpl_str(RPL_WHOISSERVER),
-	    me.name, parv[0], nick, target->server, target_srv->gcos);
+	    me.name, parv[0], nick, target->server->nick, target->server->gcos);
 
     send_out(rpl_str(RPL_ENDOFWHOIS),
 	    me.name, parv[0], nick);
@@ -885,10 +943,36 @@ gint m_whois(User *u, gint parc, gchar **parv)
     return 0;
 }
 
+/* 
+ * m_burst
+ *      parv[0] = sender prefix
+ *      parv[1] = SendQ if an EOB
+ */
 gint m_burst(User *u, gint parc, gchar **parv)
 {
-    DUMMY
+    g_return_val_if_fail(u != NULL, -1);
+
+    if(parc == 2)
+    {
+	/* this is an EOB */
+	time_t synch_time = time(NULL) - uplink.firsttime;
+
+	uplink.flags &= ~FLAGS_EOBRECV;
+	if(uplink.flags & (FLAGS_SOBSENT|FLAGS_BURST))
+	    return 0;
+	
+	send_out(":%s GNOTICE :synch to %s in %ld sec%s at %s sendq",
+		me.name, u->nick, synch_time, synch_time == 1 ? "" : "s", parv[1]);
+    }
+    else
+    {
+	/* this is a SOB */
+	uplink.flags |= FLAGS_EOBRECV;
+    }
+
+    return 0;
 }
+
 gint m_away(User *u, gint parc, gchar **parv)
 {
     DUMMY
