@@ -49,6 +49,9 @@
 
 #define DUMMY return 0;
 
+static void add_user_to_channel(User *, Channel *, guint);
+static gboolean remove_user_from_channel(Channel *, User *);
+static gboolean remove_channel_from_user_chanlist(Channel *, User *);
 
 REMOTE_TABLE_INSTANCE(user);
 REMOTE_TABLE_INSTANCE(channel);
@@ -102,11 +105,53 @@ void nego_start(void)
 
     uplink.ping_tag = g_timeout_source_add(PING_TIMEOUT, (GSourceFunc) ping_timeout, NULL);
     uplink.ptr = _TBL(user).alloc(SUX_UPLINK_NAME);
+
+    me.serv_ptr = _TBL(user).alloc(SUX_SERV_NAME);
+}
+
+G_INLINE_FUNC void m_message(User *u, gint parc, gchar **parv, gchar *type)
+{
+    gchar *sender = parv[0], *dest = parv[1], *msg = parv[2], *at, *srv_name;
+
+    at = strchr(dest, '@');
+    if(at)
+    {
+	*at = '\0';
+	srv_name = at + 1;
+	if(mycmp(me.name, srv_name))
+	{
+	    g_message("fake direction, message for %s@%s arrived to me (%s)",
+		    dest, srv_name, me.name);
+	    return;
+	}
+    }
+
+    if(dest[0] == '#')
+    {
+	send_out(":ChanServ %s %s :%s <%s> %s",
+		type, sender, dest, sender, msg);
+    }
+    else
+    {
+	send_out(":%s %s %s :you said %s",
+		dest, type, sender, msg);
+    }
+
+    return;
+}
+
+gint m_notice(User *u, gint parc, gchar **parv)
+{
+    m_message(u, parc, parv, "NOTICE");
+
+    return 0;
 }
 
 gint m_private(User *u, gint parc, gchar **parv)
 {
-    DUMMY
+    m_message(u, parc, parv, "PRIVMSG");
+
+    return 0;
 }
 
 /*
@@ -199,12 +244,17 @@ gint m_pong(User *u, gint parc, gchar **parv)
 
     if(uplink.flags & FLAGS_USERBURST)
     {
+	gchar timebuf[128];
+
 	uplink.flags &= ~FLAGS_USERBURST;
 	send_out(":%s GNOTICE :%s has processed user/channel burst, "
 		"sending topic burst.", me.name, u->nick);
 
 	uplink.flags |= FLAGS_SOBSENT;
+	
 	/* XXX: send shun/topic burst */
+	send_out(":ChanServ TOPIC #sux ChanServ %ld :last services restart: %s !", NOW, ctime_r(&NOW, timebuf));
+	
 	send_out("PING :%s", me.name);
     }
     else if(uplink.flags & FLAGS_TOPICBURST)
@@ -216,6 +266,49 @@ gint m_pong(User *u, gint parc, gchar **parv)
     }
 
     return 0;
+}
+
+static void send_nick_burst(void)
+{
+    struct my_user
+    {
+	gchar *nick;
+	gchar *umode;
+	gchar *ircname;
+    } my_users[] = {
+	{"ChanServ", "+ixz", "Channel Sux Services"},
+	{"NickServ", "+ixz", "Nickname Sux Services"},
+	{"MemoServ", "+ixz", "Memo Sux Services"},
+	{"OperServ", "+oixz", "Operator Sux Services"},
+	{NULL, NULL, NULL}
+    }, *johnny;
+    
+    User *u;
+    Channel *c = _TBL(channel).get("#sux");
+
+    time_t now = NOW;
+
+    if(c == NULL)
+    {
+	c = _TBL(channel).alloc("#sux");
+	c->ts = now;
+    }
+
+    for(johnny = my_users; johnny->nick; johnny++)
+    {
+	u = _TBL(user).alloc(johnny->nick);
+	u->ts = now;
+	strcpy(u->username, "service");
+	strcpy(u->host, "sux.vejnet.org");
+	strcpy(u->gcos, johnny->ircname);
+	u->server = me.serv_ptr;
+	
+	send_out("NICK %s 0 %ld %s service sux.vejnet.org services.azzurra.org 0 0 :%s",
+		johnny->nick, now, johnny->umode, johnny->ircname);
+	send_out(":%s SJOIN %ld #sux +nrt  :%s", me.name, now, johnny->nick);
+
+	add_user_to_channel(u, c, 0);
+    }
 }
 
 /*
@@ -291,11 +384,6 @@ gint m_error(User *u, gint parc, gchar **parv)
     return 0;
 }
 
-gint m_notice(User *u, gint parc, gchar **parv)
-{
-    DUMMY
-}
-
 static void list_free_atoms(gpointer *data, GMemChunk *chunk)
 {
     g_return_if_fail(data != NULL);
@@ -333,7 +421,7 @@ static gboolean remove_user_from_channel(Channel *c, User *u)
 	johnny = g_slist_next(johnny);
     }
 
-    g_critical("user %s not found in channel %s (sux !)\n",
+    g_warning("user %s not found in channel %s (sux !)\n",
 	    u->nick, c->chname);
 
     return FALSE;
@@ -380,7 +468,7 @@ gint m_quit(User *u, gint parc, gchar **parv)
 	    c = ((SLink *)johnny->data)->value.c;
 	    g_return_val_if_fail(c != NULL, 0);
 
-	    g_return_val_if_fail(remove_user_from_channel(c, u) == TRUE, -1);
+	    remove_user_from_channel(c, u);
 	}
 
 	g_slist_foreach(u->channels, (GFunc) list_free_atoms, _MPL(links));
@@ -424,9 +512,9 @@ gint m_part(User *u, gint parc, gchar **parv)
     g_return_val_if_fail(c != NULL, 0);
 
     /* remove this user from the channel memberlist */
-    g_return_val_if_fail(remove_user_from_channel(c, u) == TRUE, -1);
+    remove_user_from_channel(c, u);
     /* remove this channel from the user chanlist */
-    g_return_val_if_fail(remove_channel_from_user_chanlist(c, u) == TRUE, -1);
+    remove_channel_from_user_chanlist(c, u);
 
     return 1;
 }
@@ -452,9 +540,9 @@ gint m_kick(User *u, gint parc, gchar **parv)
     g_return_val_if_fail(victim != NULL, -1);
     
     /* remove this user from the channel memberlist */
-    g_return_val_if_fail(remove_user_from_channel(c, u) == TRUE, -1);
+    remove_user_from_channel(c, u);
     /* remove this channel from the user chanlist */
-    g_return_val_if_fail(remove_channel_from_user_chanlist(c, u) == TRUE, -1);
+    remove_channel_from_user_chanlist(c, u);
     
     return 0;
 }
@@ -543,7 +631,9 @@ gint m_server(User *u, gint parc, gchar **parv)
 		me.name, u->nick, SUX_UPLINK_HOST);
 	
 	send_out("BURST");
-	/* XXX: send our agents here */
+
+	send_nick_burst();
+	
 	uplink.flags |= FLAGS_SOBSENT|FLAGS_BURST;
 	send_out("PING %s", me.name);
     }
