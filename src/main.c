@@ -4,7 +4,6 @@
 #include "sux.h"
 #include "main.h"
 #include "parse.h"
-#include "usertable.h"
 #include "network.h"
 #include "log.h"
 
@@ -32,7 +31,7 @@ gint main(gint argc, gchar **argv)
 
     if((me.handle = connect_server(me.host, me.port)))
     {
-	pid_t pid = fork();
+	pid_t pid = 0; //fork();
 
 	switch(pid)
 	{
@@ -44,7 +43,7 @@ gint main(gint argc, gchar **argv)
 
 		close(0);
 		close(1);
-		close(2);
+		/*close(2);*/
 		
 		main_loop = g_main_loop_new(NULL, TRUE);
 
