@@ -1,7 +1,7 @@
 /* insert a (C) note here.
  */
 
-#include "services.h"
+#include "sux.h"
 #include "memory.h"
 
 /*******************************************************\
@@ -11,7 +11,7 @@
 /* leet awgn`s algorythm to find the first zero bit in
  * an integer
  */
-static int fz[256] =
+static int fz[] =
     { 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4,
 	  0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 5,
 	  0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4,
@@ -116,6 +116,8 @@ static void realloc_segment (SEG_T *seg)
 	off_t offset;
 	register SEG_T newseg;
 
+	seg->errfunc("BROKEN !!!!!\n"); /* XXX: FIX THIS CRAP ! */
+
 	newseg.pagesize = seg->pagesize;
 	newseg.numpages = seg->numpages << 1;  /* XXX: do this better ..
 						* as the segment grows,
@@ -125,7 +127,7 @@ static void realloc_segment (SEG_T *seg)
 	newseg.bitmapsize = newseg.numpages >> 3;
 	newseg.__firstfree = seg->numpages;
 #ifdef DEBUG
-	printf("realloc(%p, %d) -> ", seg->__data, newseg.datasize);
+	printf("realloc(%p->%p, %d) -> ", seg->__data, seg->__data + seg->datasize, newseg.datasize);
 #endif
 	if((newseg.__data = realloc(seg->__data, newseg.datasize)) == NULL)
 	{
@@ -134,7 +136,7 @@ static void realloc_segment (SEG_T *seg)
 		return;
 	}
 #ifdef DEBUG
-	printf("%p\n", newseg.__data);
+	printf("%p -> %p\n", newseg.__data, newseg.__data + newseg.datasize);
 	printf("realloc(%p, %d) -> ", seg->__bitmap, newseg.bitmapsize);
 #endif
 	if((newseg.__bitmap = realloc((void*)seg->__bitmap, newseg.bitmapsize)) == NULL)
@@ -143,14 +145,14 @@ static void realloc_segment (SEG_T *seg)
 				seg->bitmapsize, newseg.bitmapsize, strerror(errno));
 		return;
 	}
-	offset = seg->__data - newseg.__data;
+	offset = (off_t)(newseg.__data - seg->__data);
 #ifdef DEBUG
 	printf("%p\n", newseg.__bitmap);
 	printf("realloc data %d to %d, off_t: %ld\n", seg->datasize, newseg.datasize, offset);
 	printf("realloc bitmap %d to %d, off_t: %d\n", seg->bitmapsize, newseg.bitmapsize, 
 			((void*)seg->__bitmap) - ((void*)newseg.__bitmap));
 #endif
-	memset((void*)newseg.__bitmap + seg->bitmapsize, 0x0,	newseg.bitmapsize - seg->bitmapsize);
+	memset(((void*)newseg.__bitmap) + seg->bitmapsize, 0x0,	newseg.bitmapsize - seg->bitmapsize);
 	memset(newseg.__data + seg->datasize, 0x0, newseg.datasize - seg->datasize);
 	
 	seg->numpages = newseg.numpages;
@@ -174,6 +176,9 @@ void *SG_malloc(SEG_T *seg)
 	bitmap_t *pagefinder,
 	         *bitmapend = (void*)seg->__bitmap + seg->bitmapsize;
 	int fz;
+#ifdef DEBUG
+	void *start, *end;
+#endif
 	
 	if(seg->__firstfree == -1)
 	{
@@ -207,6 +212,17 @@ void *SG_malloc(SEG_T *seg)
 	else
 		seg->__firstfree = fz + (BITSIZE(((void*)pagefinder - (void*)seg->__bitmap)));
 	
+#ifdef DEBUG
+	start = seg->__data;
+	end = seg->__data + seg->pagesize * seg->numpages;
+
+	if(ret < start || ret > end)
+	{
+	    fprintf(stderr, "SG_malloc found an OOB pointer ... and tried to return it.");
+	    raise(SIGSEGV);
+	}
+	fprintf(stderr, "%p <=> %p, ret: %p\n", start, end, ret);
+#endif
 	return ret;
 }
 
@@ -257,7 +273,7 @@ void SG_free(void *p, SEG_T *seg)
 	 */
 
 	/* zero the free()`d page */
-	memset(p, 0x0, seg->pagesize);
+	//memset(p, 0x0, seg->pagesize);
 	
 	return;
 }
