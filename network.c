@@ -11,6 +11,9 @@ GIOChannel *connect_server(gchar *host, guint port)
     gchar hostbuf[HOSTLEN + 1];
     GIOChannel *ret;
 
+    g_return_val_if_fail(host != NULL, NULL);
+    g_return_val_if_fail(port > 0, NULL);
+
     if(!inet_pton(AF_INET, host, (void*)&sock.sin_addr))
     {
 	struct hostent *he = gethostbyname(host);
@@ -53,14 +56,43 @@ GIOChannel *connect_server(gchar *host, guint port)
 	GError *err = NULL;
 	g_io_channel_set_encoding(ret, NULL, &err);
 	g_io_channel_set_buffered(ret, TRUE);
-	g_io_channel_set_buffer_size(ret, 32768);
+	g_io_channel_set_buffer_size(ret, IOBUFSIZE);
     }
 
     return(ret);
 }
 
-/* Transmit data, return number of bytes sent, -1 = error */
-/* stolen from irssi */
+void send_out(gchar *fmt, ...)
+{
+    va_list ap;
+    gchar buffer[BUFSIZE + 1];
+    size_t len;
+
+    g_return_if_fail(fmt != NULL);
+    
+    va_start(ap, fmt);
+    len = vsnprintf(buffer, BUFSIZE, fmt, ap);
+    va_end(ap);
+
+    if(len > BUFSIZE - 2)
+    {
+	buffer[BUFSIZE - 1] = '\n';
+	buffer[BUFSIZE] = '\0';
+	len = BUFSIZE;
+    }
+    else
+    {
+	buffer[len] = '\n';
+	buffer[len+1] = '\0';
+	len++;
+    }
+
+    if(net_transmit(me.handle, buffer, len) < 0)
+	fatal("write error");
+
+    return;
+}
+
 gint net_transmit(GIOChannel *handle, const gchar *data, gint len)
 {
     guint ret;
@@ -92,78 +124,53 @@ gint net_transmit(GIOChannel *handle, const gchar *data, gint len)
     return status == G_IO_STATUS_NORMAL ? (gint)ret : -1;
 }
 
-void send_out(gchar *fmt, ...)
+gchar *net_receive(GIOChannel *handle, gsize *arnold) /* the terminator */
 {
-    va_list ap;
-    gchar buffer[BUFSIZE + 1];
-    size_t len;
-    
-    va_start(ap, fmt);
-    len = vsnprintf(buffer, BUFSIZE, fmt, ap);
-    va_end(ap);
-
-    if(len > BUFSIZE - 2)
-    {
-	buffer[BUFSIZE - 1] = '\n';
-	buffer[BUFSIZE] = '\0';
-	len = BUFSIZE;
-    }
-    else
-    {
-	buffer[len] = '\n';
-	buffer[len+1] = '\0';
-	len++;
-    }
-
-    if(net_transmit(me.handle, buffer, len) < 0)
-	fatal("write error");
-
-    return;
-}
-
-gboolean net_receive_callback(GIOChannel *source, GIOCondition cond)
-{
-    /* recv callback func */
+    /* recv func */
 
     GError *err = NULL;
-    gchar *string;
-    gsize len, arnold; /* terminator */
-    GIOStatus status;
+    gchar *ret;
+    gsize len;
 
-    while((status = g_io_channel_read_line(source, &string, &len, &arnold, &err)) == G_IO_STATUS_NORMAL)
+    g_return_val_if_fail(handle != NULL, FALSE);
+
+    switch(g_io_channel_read_line(handle, &ret, &len, arnold, &err))
     {
-	if(string != NULL)
-	{
-	    string[arnold] = '\0';
-	    parse(string);
-	    g_free(string);
-	}
+	case G_IO_STATUS_NORMAL:
+	    if(ret != NULL)
+	    {
+		ret[*arnold] = '\0';
+		return ret;
+	    }
+	    return NULL;
+
+	case G_IO_STATUS_ERROR:
+	    fatal(err->message);
+	    g_error_free(err);
+	    return NULL;
+    
+	case G_IO_STATUS_EOF:
+	    fatal("connection closed");
+	    return NULL;
+
+	default:
+	    fatal("unknown status returned by net_receive() [this is a bug !]");
+	    return NULL;
     }
     
-    if(status == G_IO_STATUS_ERROR)
-    {
-	fprintf(stderr, err->message);
-	g_error_free(err);
-	return FALSE;
-    }
-    else if(status == G_IO_STATUS_EOF)
-    {
-	fprintf(stderr, "connection closed");
-	fatal("sux");
-	return FALSE;
-    }
-    
-    return TRUE;
+    abort();
+    return NULL;
 }
 
-gboolean net_send_callback(GIOChannel *dest, GIOCondition cond)
+gboolean net_flush(GIOChannel *dest)
 {
     GError *err = NULL;
-    
+
     switch(g_io_channel_flush(dest, &err))
     {
 	case G_IO_STATUS_ERROR:
 	    fatal(err->message);
+	    return FALSE;
 	case G_IO_STATUS_NORMAL:
 	    g_source_remove(me.send_tag);
 	    me.send_tag = -1;
@@ -172,12 +179,37 @@ gboolean net_send_callback(GIOChannel *dest, GIOCondition cond)
 	    return TRUE;
     }
 
+    return FALSE;
+}
+
+gboolean net_receive_callback(GIOChannel *source)
+{
+    gchar *string = NULL;
+    gsize arnold;
+
+    g_return_val_if_fail(source != NULL, FALSE);
+
+    while((string = net_receive(source, &arnold)))
+    {
+	string[arnold] = '\0';
+	parse(string);
+	g_free(string);
+    }
+    
     return TRUE;
 }
 
-gboolean net_err_callback(GIOChannel *dest, GIOCondition cond)
+gboolean net_send_callback(GIOChannel *dest)
 {
-    /* err func */
+    g_return_val_if_fail(dest != NULL, FALSE);
+
+    return net_flush(dest);
+}
+
+gboolean net_err_callback(GIOChannel *dest)
+{
+    g_return_val_if_fail(dest != NULL, FALSE);
+
     fatal("network error");
 
     return FALSE;
