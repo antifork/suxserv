@@ -79,7 +79,7 @@ void __sux_tty_log_handler_critical_errno(const gchar *log_domain, GLogLevelFlag
 void __sux_tty_log_handler_critical_syslog(const gchar *log_domain, GLogLevelFlags log_level,
 	const gchar *message)
 {
-    syslog(LOG_NOTICE, "%s: Critical: %s\n", log_domain, message);
+    syslog(LOG_NOTICE, "%s: Critical: %s", log_domain, message);
     exit(-1);
 }
 
