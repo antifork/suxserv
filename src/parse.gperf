@@ -100,11 +100,10 @@ RS, m_rs, 0
  * 
  * NOTE: parse() should not be called recusively by any other functions!
  */
-gint parse(gchar *in)
+gint parse(gchar *buffer)
 {
     static gchar sender[HOSTLEN + 1];
     static gchar *para[MAXPARA + 1];
-    static gchar buffer[BUFSIZE + 1];
 
     gchar *ch, *s;
     gint i, len = 0;
@@ -114,11 +113,9 @@ gint parse(gchar *in)
     s = sender;
     *s = '\0';
 
-    /* g_fprintf(stderr, "<: %s\n", buffer); */    
+    /* g_fprintf(stderr, "<: %s\n", buffer); */
     
     for (ch = buffer; *ch == ' '; ch++);	/* skip spaces */
-
-    strncpy(buffer, in, BUFSIZE);
 
     para[0] = G_LIKELY(u) ? u->nick : NULL;
     if (*ch == ':') 
