@@ -142,6 +142,8 @@ struct TABLE
 #define CLEAN_FUNC(NAME)										\
 	G_INLINE_FUNC void NAME##_table_clean(void)							\
 	{												\
+	    g_hash_table_foreach(NAME##_table.__hash_tbl,						\
+		    (GHFunc)hash_tbl_dealloc, NAME##_table.__mem_pool);					\
 	    g_hash_table_destroy(NAME##_table.__hash_tbl);						\
 	    g_mem_chunk_destroy(NAME##_table.__mem_pool);						\
 	}
@@ -153,11 +155,11 @@ struct TABLE
 	    NAME##_table.put = (table_put_f)NAME##_table_put;						\
 	    NAME##_table.alloc = (table_alloc_f)NAME##_table_alloc;					\
 	    NAME##_table.del = (table_del_f)NAME##_table_del;						\
-	    NAME##_table.destroy = (table_destroy_f)NAME##_table_destroy;					\
-	    NAME##_table.init = (table_init_f)NAME##_table_init;						\
+	    NAME##_table.destroy = (table_destroy_f)NAME##_table_destroy;				\
+	    NAME##_table.init = (table_init_f)NAME##_table_init;					\
 	    NAME##_table.clean = (table_clean_f)NAME##_table_clean;					\
 	    												\
-	    NAME##_table.init();										\
+	    NAME##_table.init();									\
 	}
 
 #define LOCAL_TABLE_INSTANCE(NAME)	TABLE_T NAME##_table;
