@@ -1,7 +1,7 @@
-#include "sux.h"
-
 #ifndef __generic_table_h__
 #define __generic_table_h__
+
+#include "sux.h"
 
 extern gint errno;
 
@@ -144,7 +144,7 @@ struct TABLE
 	void NAME##_table_setup(gint PRE_ALLOC)								\
 	{												\
 	    NAME##_table.__mem_pool = g_mem_chunk_create(DATA_TYPE, PRE_ALLOC, G_ALLOC_AND_FREE);	\
-	    NAME##_table.__hash_tbl = g_hash_table_new((GHashFunc)HASH_FUNC, g_str_equal);		\
+	    NAME##_table.__hash_tbl = g_hash_table_new((GHashFunc)HASH_FUNC, __sux_hash_strcmp);	\
 	    												\
 	    NAME##_table.get = (table_get_f)NAME##_table_get;						\
 	    NAME##_table.put = (table_put_f)NAME##_table_put;						\
