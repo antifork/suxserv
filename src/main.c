@@ -86,12 +86,12 @@ gint main(gint argc, gchar **argv)
 		/* child */		
 		g_thread_init(NULL);
 		
-		setup_signals();
 		setup_mutexes();
+		setup_netbuf();
+		setup_signals();
 		setup_fds();
 		setup_allocators();
 		setup_tables();
-		setup_netbuf();
 		
 		log_set_irc_wrapper();
 		
@@ -145,13 +145,31 @@ gint main(gint argc, gchar **argv)
 
 static void clean_exit(void)
 {
-#if 0 /* XXX: to be solved */
     g_mutex_lock(me.writebuf_mutex);
+    g_mutex_lock(me.readbuf_mutex);
     if(me.sendQ->len)
     {
-	g_io_channel_write_chars(me.handle, me.sendQ->str, me.sendQ->len, NULL, NULL);
-	me.sendQ = g_string_erase(me.sendQ, 0, -1);
+	guint bytes_written;
+	GIOStatus status;
+	gboolean tried = FALSE;
+	
+	while(TRUE)
+	{
+	    status = g_io_channel_write_chars(me.handle, me.sendQ->str,
+		    me.sendQ->len, &bytes_written, NULL);
+
+	    me.sendQ = g_string_erase(me.sendQ, 0, bytes_written);
+
+	    if(!tried && me.sendQ->len)
+	    {
+		tried = TRUE;
+		continue;
+	    }
+
+	    break;
+	}
     }
+    
     net_shutdown(me.handle);
 
     g_source_del(me.recv_tag);
@@ -161,9 +179,6 @@ static void clean_exit(void)
     g_io_channel_unref(me.handle);
 
     g_main_context_unref(me.ctx);
-
-    g_mutex_unlock(me.writebuf_mutex);
-#endif
 
     exit(0);
 }
@@ -215,8 +230,6 @@ static int start_net_thread(void)
     gint timeout;
     gboolean some_ready;
     gint nfds, allocated_nfds = 4;
-
-    setup_signals();
 
     g_mutex_lock(me.ctx_mutex);
     me.ctx = g_main_context_new();
@@ -282,8 +295,6 @@ static int start_parse_thread(void)
     gchar **strings = g_new0(gchar *, STRINGS_PER_CYCLE);
     GString *read_data = g_string_sized_new(READBUFSZ);
     gint i, count;
-
-    setup_signals();
 
     while(TRUE)
     {
