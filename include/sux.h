@@ -91,7 +91,18 @@ typedef struct channel
    time_t ts;
    Mode mode;
    GSList *bans;
-   GSList *users;
+   GSList *members;
 } Channel;
+
+typedef struct slink
+{
+    union
+    {
+	User *u;
+	Channel *c;
+	gchar *cp;
+    } value;
+    gint flags;
+} SLink;
 
 #endif /* __sux_h__ */
